@@ -17,8 +17,13 @@ export default function SellerReviews() {
     const [userData, setUserData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    // Edit State
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isEditing, setIsEditing] = useState<string | null>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const reviewsPerPage = 10;
     const [rating, setRating] = useState(5);
     const [text, setText] = useState('');
     const [reviewerName, setReviewerName] = useState('');
@@ -78,25 +83,25 @@ export default function SellerReviews() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || (!isAdmin && !isEditing)) return;
+        if (!user && !isAdmin) return; // Ensure a user is logged in or it's an admin
         if (!sellerName) return;
 
         try {
             if (isEditing) {
                 await reviewService.updateReview(isEditing, rating, text, reviewerName, reviewerPhoto);
             } else {
-                await reviewService.addReview(sellerName, user.uid, rating, text, reviewerName || 'Verified Buyer', reviewerPhoto);
+                await reviewService.addReview(sellerName, user?.uid || '', rating, text, reviewerName || 'Verified Buyer', reviewerPhoto);
             }
+            fetchReviews();
             setIsFormOpen(false);
             setIsEditing(null);
             setRating(5);
             setText('');
             setReviewerName('');
             setReviewerPhoto('');
-            fetchReviews();
         } catch (error) {
             console.error(error);
-            alert("Failed to save review.");
+            alert('Failed to save review');
         }
     };
 
@@ -118,6 +123,17 @@ export default function SellerReviews() {
         setReviewerName(review.reviewerName || 'Verified Buyer');
         setReviewerPhoto(review.reviewerPhoto || '');
         setIsFormOpen(true);
+    };
+
+    // Pagination calculations
+    const indexOfLastReview = currentPage * reviewsPerPage;
+    const indexOfFirstReview = indexOfLastReview - reviewsPerPage;
+    const currentReviews = reviews.slice(indexOfFirstReview, indexOfLastReview);
+    const totalPages = Math.ceil(reviews.length / reviewsPerPage);
+
+    const paginate = (pageNumber: number) => {
+        setCurrentPage(pageNumber);
+        window.scrollTo({ top: 300, behavior: 'smooth' });
     };
 
     if (loading) {
@@ -274,7 +290,7 @@ export default function SellerReviews() {
                             <p className="text-gaming-muted font-medium">No reviews have been published for this seller yet.</p>
                         </div>
                     ) : (
-                        reviews.map((review: SellerReview) => {
+                        currentReviews.map((review: SellerReview) => {
                             const displayName = review.reviewerName || 'Verified Buyer';
                             const initial = displayName.charAt(0).toUpperCase();
                             const colorClasses = getRandomColorClasses(displayName);
@@ -323,6 +339,55 @@ export default function SellerReviews() {
                                 </div>
                             );
                         })
+                    )}
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2 mt-12 pt-8 border-t border-gaming-700/50">
+                            <button
+                                onClick={() => paginate(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="btn-secondary py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Prev
+                            </button>
+                            <div className="flex gap-2 mx-4">
+                                {[...Array(totalPages)].map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    if (
+                                        pageNumber === 1 ||
+                                        pageNumber === totalPages ||
+                                        (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                                    ) {
+                                        return (
+                                            <button
+                                                key={pageNumber}
+                                                onClick={() => paginate(pageNumber)}
+                                                className={`w-10 h-10 rounded-lg font-bold transition-colors ${currentPage === pageNumber
+                                                    ? 'bg-gaming-accent text-gaming-900 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                                                    : 'bg-gaming-800 text-white hover:bg-gaming-700 border border-gaming-700'
+                                                    }`}
+                                            >
+                                                {pageNumber}
+                                            </button>
+                                        );
+                                    } else if (
+                                        pageNumber === currentPage - 2 ||
+                                        pageNumber === currentPage + 2
+                                    ) {
+                                        return <span key={pageNumber} className="text-gaming-muted flex items-end justify-center w-8">...</span>;
+                                    }
+                                    return null;
+                                })}
+                            </div>
+                            <button
+                                onClick={() => paginate(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="btn-secondary py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
                     )}
                 </div>
 
