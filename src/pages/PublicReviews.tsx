@@ -23,6 +23,10 @@ export default function PublicReviews() {
     const [adminOverrideName, setAdminOverrideName] = useState('');
     const [adminOverridePhoto, setAdminOverridePhoto] = useState('');
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const reviewsPerPage = 10;
+
     const getRandomColorClasses = (name: string) => {
         const colors = [
             'bg-red-500/10 border-red-500/30 text-red-500',
@@ -121,11 +125,34 @@ export default function PublicReviews() {
         try {
             await publicReviewService.deleteReview(id);
             setReviews(reviews.filter(r => r.id !== id));
+
+            // Adjust pagination if deleting last item on page
+            const totalPages = Math.ceil((reviews.length - 1) / reviewsPerPage);
+            if (currentPage > totalPages && totalPages > 0) {
+                setCurrentPage(totalPages);
+            }
+
         } catch (error) {
             console.error("Failed to delete", error);
             alert("Failed to delete review");
         }
     };
+
+    // Pagination calculations
+    const indexOfLastReview = currentPage * reviewsPerPage;
+    const indexOfFirstReview = indexOfLastReview - reviewsPerPage;
+    const currentReviews = reviews.slice(indexOfFirstReview, indexOfLastReview);
+    const totalPages = Math.ceil(reviews.length / reviewsPerPage);
+
+    const paginate = (pageNumber: number) => {
+        setCurrentPage(pageNumber);
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+    };
+
+    // Calculate Average Rating
+    const averageRating = reviews.length > 0
+        ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1)
+        : '0.0';
 
     return (
         <div className="pt-24 pb-20 md:pb-0">
@@ -301,7 +328,29 @@ export default function PublicReviews() {
                         </div>
                     ) : reviews.length > 0 ? (
                         <div className="max-w-4xl mx-auto space-y-4">
-                            {reviews.map((review) => {
+                            {/* Stats Header */}
+                            <div className="bg-gaming-800/80 border border-gaming-700/50 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg text-center md:text-left">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white mb-1"><span className="text-gaming-accent">{reviews.length}+</span> Public Reviews</h2>
+                                    <p className="text-gaming-muted text-sm">Real experiences from our community.</p>
+                                </div>
+                                <div className="bg-gaming-900/80 border border-gaming-600 px-6 py-4 rounded-xl flex items-center gap-4 shrink-0 w-full justify-center md:w-auto md:justify-start">
+                                    <div className="text-center">
+                                        <p className="text-3xl font-extrabold text-amber-400 mb-1 leading-none">{averageRating}</p>
+                                    </div>
+                                    <div className="h-10 w-px bg-gaming-700" />
+                                    <div>
+                                        <div className="flex text-amber-500 mb-1">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={i} className={`w-4 h-4 ${i < Math.round(Number(averageRating)) ? 'fill-amber-500' : 'text-gray-600'}`} />
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-gaming-muted uppercase font-bold tracking-wider">Average Rating</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {currentReviews.map((review) => {
                                 const initial = review.userName.charAt(0).toUpperCase();
                                 const colorClasses = getRandomColorClasses(review.userName);
 
@@ -355,6 +404,57 @@ export default function PublicReviews() {
                                     </motion.div>
                                 );
                             })}
+
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-2 mt-12 pt-8 border-t border-gaming-700/50">
+                                    <button
+                                        onClick={() => paginate(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="btn-secondary py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Prev
+                                    </button>
+                                    <div className="flex gap-2 mx-4">
+                                        {[...Array(totalPages)].map((_, index) => {
+                                            // Only show a few page numbers to avoid crowding
+                                            const pageNumber = index + 1;
+                                            if (
+                                                pageNumber === 1 ||
+                                                pageNumber === totalPages ||
+                                                (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                                            ) {
+                                                return (
+                                                    <button
+                                                        key={pageNumber}
+                                                        onClick={() => paginate(pageNumber)}
+                                                        className={`w-10 h-10 rounded-lg font-bold transition-colors ${currentPage === pageNumber
+                                                            ? 'bg-gaming-accent text-gaming-900 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                                                            : 'bg-gaming-800 text-white hover:bg-gaming-700 border border-gaming-700'
+                                                            }`}
+                                                    >
+                                                        {pageNumber}
+                                                    </button>
+                                                );
+                                            } else if (
+                                                pageNumber === currentPage - 2 ||
+                                                pageNumber === currentPage + 2
+                                            ) {
+                                                return <span key={pageNumber} className="text-gaming-muted flex items-end justify-center w-8">...</span>;
+                                            }
+                                            return null;
+                                        })}
+                                    </div>
+                                    <button
+                                        onClick={() => paginate(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="btn-secondary py-2 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
                     ) : (
                         <div className="text-center py-20 bg-gaming-800/30 rounded-2xl border border-gaming-700 border-dashed">
