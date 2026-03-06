@@ -329,11 +329,6 @@ export default function PublicReviews() {
                                                         <span className="text-xs text-gaming-muted flex items-center gap-1">
                                                             {(review.createdAt as Date).toLocaleDateString('en-US')}
                                                         </span>
-                                                        {review.isAdminReview && (
-                                                            <span className="text-[10px] font-bold text-pink-400 bg-pink-500/20 px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                                <ShieldAlert className="w-3 h-3" /> Admin
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
