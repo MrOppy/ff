@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, where, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface PublicReview {
@@ -32,14 +32,37 @@ export const publicReviewService = {
     async getReviews(): Promise<PublicReview[]> {
         const q = query(collection(db, REVIEWS_COLLECTION), orderBy('createdAt', 'desc'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data();
+
+        const reviews = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
+            const data = docSnap.data();
+
+            let liveUserName = data.userName;
+            let liveUserPhoto = data.userPhoto;
+
+            // Fetch live user data if it's not an admin override review
+            if (!data.isAdminReview && data.userId) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', data.userId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        if (userData.displayName) liveUserName = userData.displayName;
+                        if (userData.photoURL !== undefined) liveUserPhoto = userData.photoURL; // allow nulling photo
+                    }
+                } catch (e) {
+                    console.error("Error fetching live user data for review", e);
+                }
+            }
+
             return {
-                id: doc.id,
+                id: docSnap.id,
                 ...data,
+                userName: liveUserName,
+                userPhoto: liveUserPhoto,
                 createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date()
             } as PublicReview;
-        });
+        }));
+
+        return reviews;
     },
 
     async deleteReview(reviewId: string): Promise<void> {
