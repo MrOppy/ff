@@ -17,13 +17,14 @@ export interface UserProfile {
     displayName: string | null;
     photoURL: string | null;
     bio?: string | null;
-    role: 'user' | 'seller' | 'trusted_seller' | 'admin';
+    role: 'user' | 'seller' | 'trusted_seller' | 'admin' | 'higher_admin' | 'main_admin';
     createdAt: number;
     whatsappNumber?: string | null;
     isBanned?: boolean;
     isScammer?: boolean;
     wishlist?: string[];
     username?: string;
+    hasCompletedOnboarding?: boolean;
 }
 
 interface AuthContextType {
@@ -42,7 +43,8 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 // We'll temporarily set this so we don't block the UI while developing
 // In a real app, you'd replace 'ADMIN_EMAIL' in firebase.ts with your actual email.
-const isUserAdmin = (email: string | null) => email === ADMIN_EMAIL || email?.includes("admin");
+const isMainAdmin = (email: string | null) => email === ADMIN_EMAIL;
+const isAutoAdmin = (email: string | null) => email?.includes("admin") && email !== ADMIN_EMAIL;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -59,10 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const userRef = doc(db, 'users', currentUser.uid);
                     const userSnap = await getDoc(userRef);
 
-                    let userRole: 'user' | 'seller' | 'trusted_seller' | 'admin' = 'user';
+                    let userRole: 'user' | 'seller' | 'trusted_seller' | 'admin' | 'higher_admin' | 'main_admin' = 'user';
 
                     // Auto-assign admin if email matches
-                    if (isUserAdmin(currentUser.email)) {
+                    if (isMainAdmin(currentUser.email)) {
+                        userRole = 'main_admin';
+                    } else if (isAutoAdmin(currentUser.email)) {
                         userRole = 'admin';
                     }
 
@@ -91,12 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             await setDoc(userRef, { username: newUsername }, { merge: true });
                         }
 
-                        // If they are an admin by email now, but were a user before, upgrade them in state
-                        if (userRole === 'admin' && updatedData.role !== 'admin') {
-                            setProfile({ ...updatedData, role: 'admin' });
-                        } else {
-                            setProfile(updatedData);
+                        // If they are a main_admin by email now, but had a different role before, upgrade them
+                        if (userRole === 'main_admin' && updatedData.role !== 'main_admin') {
+                            updatedData.role = 'main_admin';
+                            await setDoc(userRef, { role: 'main_admin' }, { merge: true });
+                        } else if (userRole === 'admin' && updatedData.role !== 'admin' && updatedData.role !== 'higher_admin' && updatedData.role !== 'main_admin') {
+                            updatedData.role = 'admin';
+                            await setDoc(userRef, { role: 'admin' }, { merge: true });
                         }
+                        
+                        setProfile(updatedData);
                     } else {
                         // Create new user profile
                         let newUsername = userService.generateRandomUsername();
@@ -116,7 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             role: userRole,
                             whatsappNumber: null,
                             wishlist: [],
-                            createdAt: Date.now()
+                            createdAt: Date.now(),
+                            hasCompletedOnboarding: false
                         };
 
                         await setDoc(userRef, newProfile);
@@ -130,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         email: currentUser.email,
                         displayName: currentUser.displayName,
                         photoURL: currentUser.photoURL,
-                        role: isUserAdmin(currentUser.email) ? 'admin' : 'user',
+                        role: isMainAdmin(currentUser.email) ? 'main_admin' : isAutoAdmin(currentUser.email) ? 'admin' : 'user',
                         createdAt: Date.now()
                     });
                 }
@@ -208,8 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const isAdmin = profile?.role === 'admin';
-    const isSeller = profile?.role === 'seller' || profile?.role === 'trusted_seller' || profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'higher_admin' || profile?.role === 'main_admin';
+    const isSeller = profile?.role === 'admin' || profile?.role === 'higher_admin' || profile?.role === 'main_admin' || profile?.role === 'trusted_seller' || profile?.role === 'seller';
 
     return (
         <AuthContext.Provider value={{ user, profile, loading, signInWithGoogle, logout, updateProfile, isAdmin, isSeller, toggleWishlist }}>

@@ -16,7 +16,7 @@ export default function SellerProfile() {
     const { sellerName } = useParams<{ sellerName: string }>();
     const { t } = useLanguage();
     const [listings, setListings] = useState<AccountData[]>([]);
-    const [sellerRole, setSellerRole] = useState<'seller' | 'trusted_seller' | 'admin' | null>(null);
+    const [sellerRole, setSellerRole] = useState<string | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [userData, setUserData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -113,6 +113,12 @@ export default function SellerProfile() {
     })();
 
     const roleBadge = (() => {
+        if (sellerRole === 'main_admin') {
+            return { icon: ShieldAlert, label: 'Main Admin', cls: 'bg-purple-500/10 border-purple-500/50 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.25)]' };
+        }
+        if (sellerRole === 'higher_admin') {
+            return { icon: ShieldCheck, label: 'Higher Admin', cls: 'bg-pink-400/10 border-pink-400/50 text-pink-300 shadow-[0_0_15px_rgba(244,114,182,0.25)]' };
+        }
         if (sellerRole === 'admin') {
             return { icon: ShieldAlert, label: 'Admin', cls: 'bg-pink-500/10 border-pink-500/50 text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.25)]' };
         }
@@ -192,13 +198,23 @@ export default function SellerProfile() {
 
                             {/* CTA */}
                             <div className="flex-shrink-0 w-full lg:w-auto">
-                                <button
-                                    onClick={() => window.open(`https://wa.me/8801764696964?text=${encodeURIComponent('Hi Admin, I want to talk to the seller: ' + sellerName)}`, '_blank')}
-                                    className="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-[0_6px_18px_rgba(16,185,129,0.3)] transition-all hover:-translate-y-0.5"
-                                >
-                                    <WhatsAppIcon className="w-4 h-4" />
-                                    Message via Admin
-                                </button>
+                                {userData?.whatsappNumber ? (
+                                    <button
+                                        onClick={() => window.open(`https://wa.me/${userData.whatsappNumber}?text=${encodeURIComponent('Hi, I saw your profile on IDBuySell.')}`, '_blank')}
+                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold text-xs sm:text-sm shadow-[0_6px_18px_rgba(16,185,129,0.3)] transition-all hover:-translate-y-0.5"
+                                    >
+                                        <WhatsAppIcon className="w-4 h-4" />
+                                        Contact Seller
+                                    </button>
+                                ) : (
+                                    <button
+                                        disabled
+                                        className="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gaming-700 text-gaming-muted font-bold text-xs sm:text-sm cursor-not-allowed border border-gaming-600"
+                                    >
+                                        <WhatsAppIcon className="w-4 h-4 opacity-50" />
+                                        Seller didn't add number
+                                    </button>
+                                )}
                             </div>
                         </div>
 

@@ -255,7 +255,22 @@ export const translations = {
         "prof_req_desc": "You currently have a standard user account. To create listings and sell accounts on this platform, you must be manually verified by the administrator.",
         "prof_btn_wa": "Contact Admin via WhatsApp",
         "prof_listings_title": "All My Listings",
-        "prof_no_listings": "You haven't created any listings yet."
+        "prof_no_listings": "You haven't created any listings yet.",
+
+        // Onboarding Modal
+        "ob_welcome_title": "Welcome to the Platform!",
+        "ob_welcome_desc": "Please complete your profile to continue. Adding a WhatsApp number automatically grants you seller privileges.",
+        "ob_label_name": "Display Name *",
+        "ob_label_user": "Username *",
+        "ob_label_wa": "WhatsApp Number (Optional)",
+        "ob_wa_desc": "If you want to sell items, you must provide a WhatsApp number so buyers can contact you.",
+        "ob_btn_complete": "Complete Setup",
+        "ob_btn_saving": "Saving...",
+        "ob_err_name": "Name is required.",
+        "ob_err_user": "Username is required.",
+        "ob_err_user_char": "Username can only contain letters, numbers, and underscores.",
+        "ob_err_user_taken": "Username is already taken. Please choose another.",
+        "ob_err_save": "Failed to save profile."
     },
     bn: {
         // Hero Section
@@ -513,6 +528,21 @@ export const translations = {
         "prof_req_desc": "বর্তমানে আপনার একটি সাধারণ ইউজার একাউন্ট রয়েছে। এই প্ল্যাটফর্মে লিস্টিং তৈরি করতে এবং একাউন্ট বিক্রি করতে, আপনাকে এডমিনের মাধ্যমে ম্যানুয়ালি ভেরিফাইড হতে হবে।",
         "prof_btn_wa": "হোয়াটসঅ্যাপে এডমিনের সাথে যোগাযোগ করুন",
         "prof_listings_title": "আমার সব লিস্টিং",
-        "prof_no_listings": "আপনি এখনও কোনো লিস্টিং তৈরি করেননি।"
+        "prof_no_listings": "আপনি এখনও কোনো লিস্টিং তৈরি করেননি。",
+
+        // Onboarding Modal
+        "ob_welcome_title": "প্ল্যাটফর্মে স্বাগতম!",
+        "ob_welcome_desc": "অনুগ্রহ করে আপনার প্রোফাইল সম্পূর্ণ করুন। হোয়াটসঅ্যাপ নম্বর যোগ করলে আপনি স্বয়ংক্রিয়ভাবে সেলার সুবিধা পাবেন।",
+        "ob_label_name": "ডিসপ্লে নাম *",
+        "ob_label_user": "ইউজারনেম *",
+        "ob_label_wa": "হোয়াটসঅ্যাপ নম্বর (ঐচ্ছিক)",
+        "ob_wa_desc": "আপনি যদি একাউন্ট বিক্রি করতে চান, তবে অবশ্যই একটি হোয়াটসঅ্যাপ নম্বর দিতে হবে যাতে ক্রেতারা আপনার সাথে যোগাযোগ করতে পারে।",
+        "ob_btn_complete": "সেটআপ সম্পন্ন করুন",
+        "ob_btn_saving": "সেভ হচ্ছে...",
+        "ob_err_name": "নাম দেওয়া আবশ্যক।",
+        "ob_err_user": "ইউজারনেম দেওয়া আবশ্যক।",
+        "ob_err_user_char": "ইউজারনেমে শুধুমাত্র অক্ষর, সংখ্যা এবং আন্ডারস্কোর থাকতে পারে।",
+        "ob_err_user_taken": "ইউজারনেমটি আগে থেকেই ব্যবহৃত। অনুগ্রহ করে অন্যটি বেছে নিন।",
+        "ob_err_save": "প্রোফাইল সেভ করতে ব্যর্থ হয়েছে।"
     }
 };

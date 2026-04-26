@@ -19,6 +19,7 @@ export type NewListingData = Omit<AccountData, 'id' | 'featured'> & {
     server: string;
     videoUrl?: string; // YouTube or Streamable
     imageGallery: string[]; // Replaces storage URLs with direct URLs from Catbox.moe
+    lastBumpedAt?: { toMillis?: () => number } | unknown;
 };
 
 export const LISTINGS_COLLECTION = 'listings';
@@ -146,6 +147,14 @@ export const listingService = {
     async deleteListing(id: string) {
         const docRef = doc(db, LISTINGS_COLLECTION, id);
         await deleteDoc(docRef);
+    },
+
+    // Bump a listing to the top
+    async bumpListing(id: string) {
+        const docRef = doc(db, LISTINGS_COLLECTION, id);
+        await updateDoc(docRef, {
+            lastBumpedAt: serverTimestamp()
+        });
     },
 
     // Batch update username on all of a seller's listings

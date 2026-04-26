@@ -51,6 +51,13 @@
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .beam-divider {

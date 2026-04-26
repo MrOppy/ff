@@ -12,6 +12,9 @@ import { useLanguage } from '../context/LanguageContext';
 import type { AccountData } from '../components/AccountCard';
 import { reviewService, type SellerReview } from '../services/reviewService';
 import StarRating from '../components/StarRating';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { userService } from '../services/userService';
 
 const FALLBACK_DETAILS = {
     description: "Selling my Free Fire account. fully maxed out.",
@@ -33,6 +36,7 @@ export default function AccountDetails() {
 
     const [sellerRating, setSellerRating] = useState<number | null>(null);
     const [reviewCount, setReviewCount] = useState<number>(0);
+    const [sellerWhatsapp, setSellerWhatsapp] = useState<string | null>(null);
 
     const [comments, setComments] = useState<CommentData[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -51,6 +55,7 @@ export default function AccountDetails() {
 
     const isOwner = Boolean(user && account && user.displayName === account.seller);
     const isWishlisted = Boolean(profile?.wishlist?.includes(id || ''));
+    const isAdminUser = profile?.role === 'main_admin' || profile?.role === 'higher_admin' || profile?.role === 'admin';
 
     const handleWishlistClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -95,6 +100,22 @@ export default function AccountDetails() {
                         setSellerRating(avg);
                         setReviewCount(reviews.length);
                     }
+                    
+                    // Fetch seller whatsapp
+                    let userInfo = null;
+                    if (currentAccount.sellerUsername) {
+                        userInfo = await userService.getUserByUsername(currentAccount.sellerUsername);
+                    }
+                    if (!userInfo) {
+                        const q = query(collection(db, 'users'), where('displayName', '==', reviewKey));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) {
+                            userInfo = snap.docs[0].data();
+                        }
+                    }
+                    if (userInfo && userInfo.whatsappNumber) {
+                        setSellerWhatsapp(userInfo.whatsappNumber);
+                    }
                 }
 
                 const fetchedComments = await commentService.getCommentsByListing(id);
@@ -115,15 +136,16 @@ export default function AccountDetails() {
         setCommenting(true);
         try {
             const isSeller = account?.seller === user.displayName;
+            const authorRole = profile?.role;
             const newCommentId = await commentService.addComment(
                 id, user.uid, user.displayName || 'Anonymous User',
-                user.photoURL, newComment, isSeller, profile?.role === 'admin'
+                user.photoURL, newComment, isSeller, authorRole
             );
             const newCommentData: CommentData = {
                 id: newCommentId, listingId: id, userId: user.uid,
                 userName: user.displayName || 'Anonymous User',
                 userPhoto: user.photoURL, text: newComment, createdAt: new Date(),
-                isSellerReply: isSeller, isAdminReply: profile?.role === 'admin'
+                isSellerReply: isSeller, authorRole: authorRole
             };
             setComments([...comments, newCommentData]);
             setNewComment('');
@@ -140,17 +162,21 @@ export default function AccountDetails() {
         if (!user || !account || !replyText.trim()) return;
         setReplying(true);
         try {
+            const isSeller = account?.seller === user.displayName;
+            const authorRole = profile?.role;
             await commentService.replyToComment(commentId, {
                 userId: user.uid, userName: user.displayName || 'Seller',
                 userPhoto: user.photoURL, text: replyText.trim(),
-                isAdminReply: profile?.role === 'admin'
+                isSellerReply: isSeller,
+                authorRole: authorRole
             });
             setReplyText('');
             setReplyingTo(null);
             const commentsData = await commentService.getCommentsByListing(account.id);
             setComments(commentsData);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to post reply", error);
+            alert("Failed to post reply: " + (error.message || 'Unknown error'));
         } finally {
             setReplying(false);
         }
@@ -161,8 +187,9 @@ export default function AccountDetails() {
         try {
             await commentService.deleteComment(commentId);
             setComments(comments.filter(c => c.id !== commentId));
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to delete comment', error);
+            alert('Failed to delete comment: ' + (error.message || 'Unknown error'));
         }
     };
 
@@ -175,8 +202,22 @@ export default function AccountDetails() {
                 const commentsData = await commentService.getCommentsByListing(account.id);
                 setComments(commentsData);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to delete reply', error);
+            alert('Failed to delete reply: ' + (error.message || 'Unknown error'));
+        }
+    };
+
+    const handleBumpListing = async () => {
+        if (!account) return;
+        try {
+            await listingService.bumpListing(account.id);
+            alert("Listing bumped successfully! It is now at the top of the shop.");
+            const updated = await listingService.getListingById(account.id);
+            if (updated) setAccount(updated as AccountData);
+        } catch (error) {
+            console.error("Failed to bump listing", error);
+            alert("Failed to bump listing.");
         }
     };
 
@@ -202,9 +243,57 @@ export default function AccountDetails() {
     const displayDesc = account.description || FALLBACK_DETAILS.description;
     const displayServer = account.server || 'Unknown';
 
+    const formatTime = (timestamp: any) => {
+        if (!timestamp) return '';
+        try {
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else if (typeof timestamp === 'string') {
+                date = new Date(timestamp);
+            } else if (timestamp.seconds) {
+                date = new Date(timestamp.seconds * 1000);
+            } else {
+                date = new Date(timestamp);
+            }
+            return new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            }).format(date);
+        } catch {
+            return '';
+        }
+    };
+
+    const formatListDate = (timestamp: any) => {
+        if (!timestamp) return null;
+        try {
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else if (timestamp.seconds) {
+                date = new Date(timestamp.seconds * 1000);
+            } else {
+                date = new Date(timestamp);
+            }
+            return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+        } catch (error) {
+            return null;
+        }
+    };
+    const listDateStr = formatListDate(account.createdAt);
+
     const handleBuyNow = () => {
-        const text = `Hi Admin, I'm interested in buying this account:\n\n*ID*: ${account.id}\n*Title*: ${account.title}\n*Price*: ${account.price}\n*Seller Username*: ${account.sellerUsername || account.seller}\n*Link*: ${window.location.href}\n\nPlease help me proceed securely.`;
-        const whatsappUrl = `https://wa.me/8801764696964?text=${encodeURIComponent(text)}`;
+        if (!sellerWhatsapp) {
+            alert("This seller hasn't added their WhatsApp number yet.");
+            return;
+        }
+        const text = `Hi, I'm interested in buying this account:\n\n*ID*: ${account.id}\n*Title*: ${account.title}\n*Price*: ${account.price}\n*Link*: ${window.location.href}`;
+        const whatsappUrl = `https://wa.me/${sellerWhatsapp}?text=${encodeURIComponent(text)}`;
         window.open(whatsappUrl, '_blank');
     };
 
@@ -346,10 +435,18 @@ export default function AccountDetails() {
                     <h1 className="text-xl sm:text-3xl lg:text-4xl font-heading font-black text-white leading-[1.15] tracking-tight">
                         {account.title}
                     </h1>
-                    <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gaming-muted">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-gaming-muted">
                         <span className="flex items-center gap-1 font-mono">
                             <Hash className="w-3 h-3" />{account.id}
                         </span>
+                        {listDateStr && (
+                            <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" /> Listed on {listDateStr}
+                                </span>
+                            </>
+                        )}
                     </div>
                 </motion.div>
 
@@ -451,15 +548,53 @@ export default function AccountDetails() {
                         ) : (
                             <button
                                 onClick={handleBuyNow}
-                                className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold px-6 h-10 rounded-xl shadow-[0_6px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_10px_30px_rgba(16,185,129,0.45)] transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.98] overflow-hidden group"
+                                disabled={!sellerWhatsapp}
+                                className={`relative ${sellerWhatsapp ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white shadow-[0_6px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_10px_30px_rgba(16,185,129,0.45)]' : 'bg-gaming-700 text-gaming-muted opacity-50 cursor-not-allowed'} font-bold px-6 h-10 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.98] overflow-hidden group`}
                             >
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                                 <WhatsAppIcon className="w-3.5 h-3.5 relative" />
-                                <span className="relative tracking-wide">{t['details_buy_btn']}</span>
+                                <span className="relative tracking-wide">{sellerWhatsapp ? t['details_buy_btn'] || 'Contact Seller' : "No WhatsApp"}</span>
                             </button>
                         )}
                     </div>
                 </motion.div>
+
+                {isOwner && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gaming-800/40 border border-gaming-700/80 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4"
+                    >
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white">Owner Controls</p>
+                                <p className="text-[10px] text-gaming-muted">Manage your listing</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button onClick={() => navigate(`/edit-listing/${id}`)} className="btn-secondary text-blue-400 hover:text-blue-300 border-blue-900/50 hover:bg-blue-900/20 text-xs py-2">
+                                Edit
+                            </button>
+                            <button onClick={handleBumpListing} className="btn-secondary text-emerald-400 hover:text-emerald-300 border-emerald-900/50 hover:bg-emerald-900/20 text-xs py-2 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                                Bump
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    if (window.confirm("Are you sure you want to completely DELETE this listing?")) {
+                                        await listingService.deleteListing(id || '');
+                                        navigate('/profile');
+                                    }
+                                }} 
+                                className="btn-secondary text-red-400 hover:text-red-300 border-red-900/50 hover:bg-red-900/20 text-xs py-2"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* TABS */}
                 <div className="flex items-center gap-1 mb-4 bg-gaming-800/40 border border-gaming-700/80 p-1 rounded-xl w-full sm:w-fit">
@@ -669,87 +804,133 @@ export default function AccountDetails() {
 
                             <div className="space-y-6">
                                 {comments.length > 0 ? comments.map((comment) => (
-                                    <div key={comment.id} className="flex gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gaming-600">
-                                            {comment.userPhoto ? <img src={comment.userPhoto} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-sm font-bold text-white">{comment.userName.charAt(0)}</div>}
+                                    <div key={comment.id} className="group relative flex gap-3 sm:gap-4 bg-gaming-800/20 p-4 rounded-2xl border border-gaming-700/50 hover:border-gaming-600/50 transition-colors">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border-2 border-gaming-600 shadow-lg">
+                                            {comment.userPhoto ? <img src={comment.userPhoto} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-base font-bold text-white">{comment.userName.charAt(0)}</div>}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                                <span className="font-bold text-white text-sm">{comment.userName}</span>
-                                                {comment.isSellerReply && (
-                                                    <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                        <ShieldCheck className="w-2.5 h-2.5" /> Seller
-                                                    </span>
-                                                )}
-                                                {comment.isAdminReply && (
-                                                    <span className="bg-pink-500/15 text-pink-400 border border-pink-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                        <ShieldAlert className="w-2.5 h-2.5" /> Admin
-                                                    </span>
-                                                )}
+                                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                                <span className="font-bold text-white text-sm sm:text-base">{comment.userName}</span>
+                                                <div className="flex flex-wrap items-center gap-1">
+                                                    {comment.isSellerReply && (
+                                                        <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                                                            <ShieldCheck className="w-2.5 h-2.5" /> Seller
+                                                        </span>
+                                                    )}
+                                                    {comment.authorRole === 'main_admin' && (
+                                                        <span className="bg-purple-500/15 text-purple-400 border border-purple-500/40 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                                                            <Crown className="w-2.5 h-2.5" /> Main Admin
+                                                        </span>
+                                                    )}
+                                                    {comment.authorRole === 'higher_admin' && (
+                                                        <span className="bg-pink-400/15 text-pink-300 border border-pink-400/40 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(244,114,182,0.2)]">
+                                                            <ShieldCheck className="w-2.5 h-2.5" /> Higher Admin
+                                                        </span>
+                                                    )}
+                                                    {comment.authorRole === 'admin' && (
+                                                        <span className="bg-pink-500/15 text-pink-400 border border-pink-500/40 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                                                            <ShieldAlert className="w-2.5 h-2.5" /> Admin
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] text-gaming-muted ml-auto whitespace-nowrap">
+                                                    {formatTime(comment.createdAt)}
+                                                </span>
                                             </div>
-                                            <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{comment.text}</p>
-                                            <div className="flex gap-3 mt-2">
+                                            <p className="text-gray-300 text-sm sm:text-[15px] whitespace-pre-wrap leading-relaxed">{comment.text}</p>
+                                            
+                                            <div className="flex items-center gap-4 mt-3">
                                                 {user && (
-                                                    <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-[11px] text-gaming-accent hover:underline transition-colors font-medium">
-                                                        {replyingTo === comment.id ? 'Cancel' : 'Reply'}
+                                                    <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-[11px] sm:text-xs text-gaming-muted hover:text-gaming-accent transition-colors font-medium flex items-center gap-1.5">
+                                                        <MessageCircle className="w-3.5 h-3.5" />
+                                                        {replyingTo === comment.id ? 'Cancel Reply' : 'Reply'}
                                                     </button>
                                                 )}
-                                                {(user?.uid === comment.userId || isOwner) && (
-                                                    <button onClick={() => handleDeleteComment(comment.id)} className="text-[11px] text-red-400 hover:text-red-300 hover:underline transition-colors font-medium">
+                                                {(user?.uid === comment.userId || isOwner || isAdminUser) && (
+                                                    <button onClick={() => handleDeleteComment(comment.id)} className="text-[11px] sm:text-xs text-gaming-muted hover:text-red-400 transition-colors font-medium">
                                                         Delete
                                                     </button>
                                                 )}
                                             </div>
-                                            {user && replyingTo === comment.id && (
-                                                <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className="mt-3 flex gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gaming-600">
-                                                        {user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-xs font-bold text-white">{user?.displayName?.charAt(0) || 'S'}</div>}
-                                                    </div>
-                                                    <div className="flex-1 flex flex-col items-end gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={replyText}
-                                                            onChange={(e) => setReplyText(e.target.value)}
-                                                            placeholder={`Reply to ${comment.userName}...`}
-                                                            className="glass-input text-xs py-2 px-3 w-full border-gaming-600"
-                                                            autoFocus
-                                                        />
-                                                        <button type="submit" disabled={replying || !replyText.trim()} className="btn-primary py-1 px-4 text-[11px] h-auto">
-                                                            {replying ? 'Sending...' : 'Send'}
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            )}
-                                            {comment.replies && comment.replies.length > 0 && (
-                                                <div className="mt-3 pl-3 border-l-2 border-gaming-700/60 space-y-3">
-                                                    {comment.replies.map((reply, idx) => (
-                                                        <div key={idx} className="flex gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-emerald-500/40">
-                                                                {reply.userPhoto ? <img src={reply.userPhoto} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-xs font-bold text-emerald-400">{reply.userName.charAt(0)}</div>}
+
+                                            {/* Reply Form */}
+                                            <AnimatePresence>
+                                                {user && replyingTo === comment.id && (
+                                                    <motion.form 
+                                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                        className="overflow-hidden"
+                                                        onSubmit={(e) => handleReplySubmit(e, comment.id)}
+                                                    >
+                                                        <div className="flex gap-3 bg-gaming-900/50 p-3 sm:p-4 rounded-xl border border-gaming-700/60">
+                                                            <div className="w-8 h-8 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gaming-600">
+                                                                {user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-xs font-bold text-white">{user?.displayName?.charAt(0) || 'S'}</div>}
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                                                    <span className="font-bold text-white text-xs">{reply.userName}</span>
-                                                                    {reply.userName === account.seller && (
-                                                                        <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                                            <ShieldCheck className="w-2.5 h-2.5" /> Seller
-                                                                        </span>
-                                                                    )}
-                                                                    {reply.isAdminReply && (
-                                                                        <span className="bg-pink-500/15 text-pink-400 border border-pink-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                                            <ShieldAlert className="w-2.5 h-2.5" /> Admin
-                                                                        </span>
-                                                                    )}
+                                                            <div className="flex-1 flex flex-col items-end gap-2">
+                                                                <textarea
+                                                                    value={replyText}
+                                                                    onChange={(e) => setReplyText(e.target.value)}
+                                                                    placeholder={`Reply to ${comment.userName}...`}
+                                                                    className="glass-input text-xs sm:text-sm py-2.5 px-3.5 w-full border-gaming-600 min-h-[60px] resize-none focus:bg-gaming-800"
+                                                                    autoFocus
+                                                                />
+                                                                <button type="submit" disabled={replying || !replyText.trim()} className="btn-primary py-1.5 px-5 text-xs h-auto shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                                                                    {replying ? 'Sending...' : 'Send Reply'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </motion.form>
+                                                )}
+                                            </AnimatePresence>
+
+                                            {/* Replies List */}
+                                            {comment.replies && comment.replies.length > 0 && (
+                                                <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
+                                                    {comment.replies.map((reply, idx) => (
+                                                        <div key={idx} className="flex gap-3 relative before:absolute before:left-[-15px] sm:before:left-[-19px] before:top-[-10px] before:w-[2px] before:h-[24px] before:bg-gaming-700 before:content-[''] after:absolute after:left-[-15px] sm:after:left-[-19px] after:top-[14px] after:w-[12px] after:h-[2px] after:bg-gaming-700 after:content-['']">
+                                                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gaming-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gaming-600 z-10">
+                                                                {reply.userPhoto ? <img src={reply.userPhoto} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <div className="text-xs font-bold text-white">{reply.userName.charAt(0)}</div>}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0 bg-gaming-900/40 p-3 rounded-xl border border-gaming-700/40">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className="font-bold text-white text-[13px] sm:text-sm">{reply.userName}</span>
+                                                                    <div className="flex flex-wrap items-center gap-1">
+                                                                        {reply.isSellerReply && (
+                                                                            <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                                                                                <ShieldCheck className="w-2.5 h-2.5" /> Seller
+                                                                            </span>
+                                                                        )}
+                                                                        {reply.authorRole === 'main_admin' && (
+                                                                            <span className="bg-purple-500/15 text-purple-400 border border-purple-500/40 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                                                                                <Crown className="w-2.5 h-2.5" /> Main Admin
+                                                                            </span>
+                                                                        )}
+                                                                        {reply.authorRole === 'higher_admin' && (
+                                                                            <span className="bg-pink-400/15 text-pink-300 border border-pink-400/40 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(244,114,182,0.2)]">
+                                                                                <ShieldCheck className="w-2.5 h-2.5" /> Higher Admin
+                                                                            </span>
+                                                                        )}
+                                                                        {reply.authorRole === 'admin' && (
+                                                                            <span className="bg-pink-500/15 text-pink-400 border border-pink-500/40 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
+                                                                                <ShieldAlert className="w-2.5 h-2.5" /> Admin
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-[10px] text-gaming-muted ml-auto whitespace-nowrap">
+                                                                        {formatTime(reply.createdAt)}
+                                                                    </span>
                                                                 </div>
-                                                                <p className="text-gray-400 text-xs whitespace-pre-wrap leading-relaxed">{reply.text}</p>
-                                                                <div className="flex gap-3 mt-1">
+                                                                <p className="text-gray-300 text-[13px] sm:text-sm whitespace-pre-wrap leading-relaxed">{reply.text}</p>
+                                                                
+                                                                <div className="flex gap-4 mt-2">
                                                                     {user && (
-                                                                        <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-[10px] text-gaming-accent hover:underline transition-colors font-medium">
+                                                                        <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-[10px] sm:text-[11px] text-gaming-muted hover:text-gaming-accent transition-colors font-medium">
                                                                             Reply
                                                                         </button>
                                                                     )}
-                                                                    {(user?.uid === reply.userId || isOwner) && (
-                                                                        <button onClick={() => handleDeleteReply(comment.id, reply)} className="text-[10px] text-red-400 hover:underline transition-colors font-medium">
+                                                                    {(user?.uid === reply.userId || isOwner || isAdminUser) && (
+                                                                        <button onClick={() => handleDeleteReply(comment.id, reply)} className="text-[10px] sm:text-[11px] text-gaming-muted hover:text-red-400 transition-colors font-medium">
                                                                             Delete
                                                                         </button>
                                                                     )}
@@ -787,9 +968,10 @@ export default function AccountDetails() {
                     ) : (
                         <button
                             onClick={handleBuyNow}
-                            className="flex-1 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white font-bold py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 text-sm active:scale-95"
+                            disabled={!sellerWhatsapp}
+                            className={`flex-1 ${sellerWhatsapp ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_4px_20px_rgba(16,185,129,0.35)]' : 'bg-gaming-700 text-gaming-muted opacity-50 cursor-not-allowed'} font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-sm active:scale-95`}
                         >
-                            <WhatsAppIcon className="w-4 h-4" /> Buy Now
+                            <WhatsAppIcon className="w-4 h-4" /> {sellerWhatsapp ? 'Contact Seller' : 'No WhatsApp'}
                         </button>
                     )}
                     <button

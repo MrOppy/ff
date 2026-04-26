@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, ArrowRight, Heart, ThumbsUp } from 'lucide-react';
+import { Trophy, ArrowRight, Heart, ThumbsUp, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { reviewService, type SellerReview } from '../services/reviewService';
@@ -34,6 +34,7 @@ export interface AccountData {
     imageGallery?: string[];
     _searchScore?: number;
     createdAt?: { toMillis?: () => number } | unknown;
+    lastBumpedAt?: { toMillis?: () => number } | unknown;
     isFeatured?: boolean;
 }
 
@@ -43,9 +44,10 @@ interface AccountCardProps {
     onDelete?: (id: string, e: React.MouseEvent) => void;
     onStatusChange?: (id: string, currentStatus: string, e: React.MouseEvent) => void;
     onEdit?: (id: string, e: React.MouseEvent) => void;
+    onBump?: (id: string, e: React.MouseEvent) => void;
 }
 
-export default function AccountCard({ account, index = 0, onDelete, onStatusChange, onEdit }: AccountCardProps) {
+export default function AccountCard({ account, index = 0, onDelete, onStatusChange, onEdit, onBump }: AccountCardProps) {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { profile, toggleWishlist } = useAuth();
@@ -83,6 +85,37 @@ export default function AccountCard({ account, index = 0, onDelete, onStatusChan
         }
         fetchRating();
     }, [account.seller]);
+
+    // Format bump time safely
+    const formatBumpTime = () => {
+        if (!account.lastBumpedAt) return null;
+        try {
+            const time = (account.lastBumpedAt as any).toMillis?.() || (account.lastBumpedAt as any).seconds * 1000 || null;
+            if (!time) return null;
+            
+            const diffMs = Date.now() - time;
+            const diffMins = Math.floor(diffMs / 60000);
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return `${Math.floor(diffHours / 24)}d ago`;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    const bumpStr = formatBumpTime();
+
+    const formatListDate = () => {
+        if (!account.createdAt) return null;
+        try {
+            const dateValue = (account.createdAt as any).toDate ? (account.createdAt as any).toDate() : new Date(account.createdAt as any);
+            return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(dateValue);
+        } catch (e) {
+            return null;
+        }
+    };
+    const listDateStr = formatListDate();
 
     return (
         <motion.div
@@ -143,6 +176,7 @@ export default function AccountCard({ account, index = 0, onDelete, onStatusChan
                             ★ FEATURED
                         </span>
                     )}
+
                     {account.tags.slice(0, 3).map(tag => (
                         <span key={tag} className="px-2 py-1 bg-gaming-800 border border-gaming-700 rounded text-xs text-gaming-muted">
                             {tag}
@@ -155,16 +189,30 @@ export default function AccountCard({ account, index = 0, onDelete, onStatusChan
                     )}
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-gaming-muted mb-6">
-                    <span className="flex items-center gap-1">
-                        <Trophy className="w-4 h-4 text-yellow-500" /> LVL {account.level}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-4 h-4 text-pink-500" /> {account.likes} Likes
-                    </span>
-                </div>
+                <div className="mt-auto flex flex-col">
+                    <div className="flex items-center justify-between text-sm text-gaming-muted mb-3">
+                        <span className="flex items-center gap-1">
+                            <Trophy className="w-4 h-4 text-yellow-500" /> LVL {account.level}
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <ThumbsUp className="w-4 h-4 text-pink-500" /> {account.likes} Likes
+                        </span>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1 font-medium min-h-[36px] justify-end mb-4">
+                        {listDateStr && (
+                            <div className="text-[11px] text-gaming-muted/80 flex items-center gap-1.5 uppercase tracking-wide">
+                                <Calendar className="w-3 h-3 text-gaming-muted/60" /> Listed: {listDateStr}
+                            </div>
+                        )}
+                        {bumpStr && (
+                            <div className="text-[11px] text-emerald-500/80 flex items-center gap-1.5 uppercase tracking-wide">
+                                <ArrowRight className="w-3 h-3 -rotate-45" /> Bumped: {bumpStr}
+                            </div>
+                        )}
+                    </div>
 
-                <div className="mt-auto pt-4 border-t border-gaming-700 flex flex-wrap items-center justify-between gap-y-3">
+                    <div className="pt-4 border-t border-gaming-700 flex flex-wrap items-center justify-between gap-y-3">
                     <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/seller/${account.sellerUsername || account.sellerId || account.seller}`); }}
                         className="flex shrink-0 items-center gap-2 hover:bg-gaming-800 p-1.5 -ml-1.5 rounded-lg transition-colors group/seller"
@@ -194,6 +242,9 @@ export default function AccountCard({ account, index = 0, onDelete, onStatusChan
                         {onEdit && (
                             <button onClick={(e) => { e.stopPropagation(); onEdit(account.id, e); }} className="text-blue-400 hover:text-blue-300 transition-colors text-xs font-bold bg-blue-500/10 px-2 py-1.5 rounded border border-transparent hover:border-blue-500/50">Edit</button>
                         )}
+                        {onBump && (
+                            <button onClick={(e) => { e.stopPropagation(); onBump(account.id, e); }} className="text-emerald-400 hover:text-emerald-300 transition-colors text-xs font-bold bg-emerald-500/10 px-2 py-1.5 rounded border border-transparent hover:border-emerald-500/50">Bump</button>
+                        )}
                         {onStatusChange && (
                             <button onClick={(e) => { e.stopPropagation(); onStatusChange(account.id, account.status || 'active', e); }} className="text-amber-400 hover:text-amber-300 transition-colors text-xs font-bold bg-amber-500/10 px-2 py-1.5 rounded border border-transparent hover:border-amber-500/50">
                                 {account.status === 'sold' ? 'Mark Active' : 'Mark Sold'}
@@ -202,12 +253,13 @@ export default function AccountCard({ account, index = 0, onDelete, onStatusChan
                         {onDelete && (
                             <button onClick={(e) => { e.stopPropagation(); onDelete(account.id, e); }} className="text-red-400 hover:text-red-300 transition-colors text-xs font-bold bg-red-500/10 px-2 py-1.5 rounded border border-transparent hover:border-red-500/50">Delete</button>
                         )}
-                        {!onDelete && !onStatusChange && !onEdit && (
+                        {!onDelete && !onStatusChange && !onEdit && !onBump && (
                             <button className="text-gaming-accent hover:text-white transition-colors text-sm font-bold flex items-center gap-1 pl-2">
                                 {t['card_details']} <ArrowRight className="w-4 h-4" />
                             </button>
                         )}
                     </div>
+                </div>
                 </div>
             </div>
         </motion.div>

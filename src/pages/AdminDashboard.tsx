@@ -3,13 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Users, ShoppingBag, TrendingUp, ShieldAlert, Search, UserCheck, Trash2, Plus } from 'lucide-react';
 import { collection, query, getDocs, updateDoc, doc, deleteDoc, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ADMIN_EMAIL } from '../lib/firebase';
 import { LISTINGS_COLLECTION } from '../services/listingService';
 import { adminService, type TrustedAdmin } from '../services/adminService';
 import type { AccountData } from '../components/AccountCard';
 
 export default function AdminDashboard() {
-    const { isAdmin } = useAuth();
+    const { isAdmin, user, profile } = useAuth();
     const navigate = useNavigate();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,6 +158,8 @@ export default function AdminDashboard() {
         filteredListings.sort((a, b) => Number(String(a.price).replace(/\D/g, '')) - Number(String(b.price).replace(/\D/g, '')));
     }
 
+    const myPower = profile?.role === 'main_admin' ? 3 : profile?.role === 'higher_admin' ? 2 : 1;
+
     return (
         <div className="pt-24 pb-32 md:pb-16 min-h-screen bg-gaming-900">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -184,7 +186,7 @@ export default function AdminDashboard() {
                     <div className="bg-gaming-800 border border-gaming-700 p-6 rounded-xl flex items-center justify-between">
                         <div>
                             <p className="text-gaming-muted text-sm font-medium mb-1">Total Sellers</p>
-                            <h3 className="text-3xl text-emerald-400 font-bold">{users.filter(u => u.role === 'seller' || u.role === 'trusted_seller' || u.role === 'admin').length}</h3>
+                            <h3 className="text-3xl text-emerald-400 font-bold">{users.filter(u => ['seller', 'trusted_seller', 'admin', 'higher_admin', 'main_admin'].includes(u.role)).length}</h3>
                         </div>
                         <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
                             <ShieldCheck className="w-6 h-6 text-emerald-500" />
@@ -261,8 +263,15 @@ export default function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gaming-700 bg-gaming-800/50">
-                                        {filteredUsers.map(u => (
-                                            <tr key={u.id} className="hover:bg-gaming-700/30 transition-colors">
+                                        {filteredUsers.map(u => {
+                                            const isTargetMainAdmin = u.role === 'main_admin' || u.email === ADMIN_EMAIL;
+                                            const targetPower = isTargetMainAdmin ? 3 : u.role === 'higher_admin' ? 2 : u.role === 'admin' ? 1 : 0;
+                                            const canEdit = myPower > targetPower;
+                                            const isSelf = u.id === user?.uid;
+                                            const canEditWA = canEdit || isSelf;
+
+                                            return (
+                                                <tr key={u.id} className="hover:bg-gaming-700/30 transition-colors">
                                                 <td className="px-6 py-4 flex items-center gap-3">
                                                     {u.photoURL ? <img src={u.photoURL} alt="" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 bg-gaming-700 rounded-full shrink-0" />}
                                                     <div className="flex flex-col">
@@ -278,13 +287,15 @@ export default function AdminDashboard() {
                                                     <select
                                                         value={u.role}
                                                         onChange={(e) => updateUserRole(u.id, e.target.value)}
-                                                        className={`bg-gaming-900 border border-gaming-600 rounded text-xs p-1 font-medium ${u.role === 'admin' ? 'text-pink-500' : u.role === 'trusted_seller' ? 'text-blue-400' : u.role === 'seller' ? 'text-emerald-400' : 'text-gray-400'}`}
-                                                        disabled={u.role === 'admin' && users.filter(user => user.role === 'admin').length === 1} // Prevent removing last admin
+                                                        className={`bg-gaming-900 border border-gaming-600 rounded text-xs p-1 font-medium ${isTargetMainAdmin ? 'text-purple-500' : u.role === 'higher_admin' ? 'text-pink-400' : u.role === 'admin' ? 'text-pink-500' : u.role === 'trusted_seller' ? 'text-blue-400' : u.role === 'seller' ? 'text-emerald-400' : 'text-gray-400'}`}
+                                                        disabled={!canEdit}
                                                     >
                                                         <option value="user">User</option>
                                                         <option value="seller">Seller</option>
                                                         <option value="trusted_seller">Trusted Seller</option>
-                                                        <option value="admin">Admin</option>
+                                                        { (myPower >= 2 || u.role === 'admin') && <option value="admin">Admin</option> }
+                                                        { (myPower >= 3 || u.role === 'higher_admin') && <option value="higher_admin">Higher Admin</option> }
+                                                        { (isTargetMainAdmin || u.role === 'main_admin') && <option value="main_admin">Main Admin</option> }
                                                     </select>
                                                 </td>
                                                 <td className="px-6 py-4 flex flex-wrap gap-2">
@@ -301,13 +312,15 @@ export default function AdminDashboard() {
                                                                 Profile
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={() => updateWhatsAppNumber(u.id, u.whatsappNumber)}
-                                                            className={`px-3 py-1.5 rounded font-bold text-xs ${u.whatsappNumber ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-400 border border-gaming-600'} hover:bg-gaming-700`}
-                                                        >
-                                                            {u.whatsappNumber ? 'Edit WA' : '+ Add WA'}
-                                                        </button>
-                                                        {u.role !== 'admin' && (
+                                                        {canEditWA && (
+                                                            <button
+                                                                onClick={() => updateWhatsAppNumber(u.id, u.whatsappNumber)}
+                                                                className={`px-3 py-1.5 rounded font-bold text-xs ${u.whatsappNumber ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-400 border border-gaming-600'} hover:bg-gaming-700`}
+                                                            >
+                                                                {u.whatsappNumber ? 'Edit WA' : '+ Add WA'}
+                                                            </button>
+                                                        )}
+                                                        {canEdit && (
                                                             <>
                                                                 <button
                                                                     onClick={() => toggleUserStatus(u.id, 'isBanned', !!u.isBanned)}
@@ -332,7 +345,8 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                        );
+                                        })}
                                         {filteredUsers.length === 0 && (
                                             <tr><td colSpan={5} className="px-6 py-8 text-center text-gaming-muted">No users found.</td></tr>
                                         )}
@@ -342,8 +356,15 @@ export default function AdminDashboard() {
 
                             {/* Mobile User Cards */}
                             <div className="md:hidden divide-y divide-gaming-700">
-                                {filteredUsers.map(u => (
-                                    <details key={u.id} className="group outline-none">
+                                {filteredUsers.map(u => {
+                                    const isTargetMainAdmin = u.role === 'main_admin' || u.email === ADMIN_EMAIL;
+                                    const targetPower = isTargetMainAdmin ? 3 : u.role === 'higher_admin' ? 2 : u.role === 'admin' ? 1 : 0;
+                                    const canEdit = myPower > targetPower;
+                                    const isSelf = u.id === user?.uid;
+                                    const canEditWA = canEdit || isSelf;
+
+                                    return (
+                                        <details key={u.id} className="group outline-none">
                                         <summary className="p-4 flex items-center justify-between cursor-pointer list-none hover:bg-gaming-800 transition-colors">
                                             <div className="flex items-center gap-3">
                                                 {u.photoURL ? <img src={u.photoURL} alt="" referrerPolicy="no-referrer" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <div className="w-10 h-10 bg-gaming-700 rounded-full shrink-0" />}
@@ -355,7 +376,7 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${u.role === 'admin' ? 'bg-pink-500/20 text-pink-400' : u.role === 'trusted_seller' ? 'bg-blue-500/20 text-blue-400' : u.role === 'seller' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-gray-300'}`}>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${isTargetMainAdmin ? 'bg-purple-500/20 text-purple-400' : u.role === 'higher_admin' ? 'bg-pink-400/20 text-pink-300' : u.role === 'admin' ? 'bg-pink-500/20 text-pink-400' : u.role === 'trusted_seller' ? 'bg-blue-500/20 text-blue-400' : u.role === 'seller' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-gray-300'}`}>
                                                     {u.role.replace('_', ' ')}
                                                 </span>
                                                 <div className="flex gap-1">
@@ -373,22 +394,26 @@ export default function AdminDashboard() {
                                                     value={u.role}
                                                     onChange={(e) => updateUserRole(u.id, e.target.value)}
                                                     className="w-full bg-gaming-900 border border-gaming-600 rounded text-sm p-2 text-white"
-                                                    disabled={u.role === 'admin' && users.filter(user => user.role === 'admin').length === 1}
+                                                    disabled={!canEdit}
                                                 >
                                                     <option value="user">User</option>
                                                     <option value="seller">Seller</option>
                                                     <option value="trusted_seller">Trusted Seller</option>
-                                                    <option value="admin">Admin</option>
+                                                    { (myPower >= 2 || u.role === 'admin') && <option value="admin">Admin</option> }
+                                                    { (myPower >= 3 || u.role === 'higher_admin') && <option value="higher_admin">Higher Admin</option> }
+                                                    { (isTargetMainAdmin || u.role === 'main_admin') && <option value="main_admin">Main Admin</option> }
                                                 </select>
                                             </div>
 
                                             <div className="mb-3">
-                                                <button
-                                                    onClick={() => updateWhatsAppNumber(u.id, u.whatsappNumber)}
-                                                    className="w-full bg-gaming-900 border border-gaming-600 text-emerald-400 p-2 rounded font-bold text-xs hover:bg-gaming-800 transition-colors"
-                                                >
-                                                    {u.whatsappNumber ? 'Edit/Remove WhatsApp' : '+ Add WhatsApp Number'}
-                                                </button>
+                                                {canEditWA && (
+                                                    <button
+                                                        onClick={() => updateWhatsAppNumber(u.id, u.whatsappNumber)}
+                                                        className="w-full bg-gaming-900 border border-gaming-600 text-emerald-400 p-2 rounded font-bold text-xs hover:bg-gaming-800 transition-colors"
+                                                    >
+                                                        {u.whatsappNumber ? 'Edit/Remove WhatsApp' : '+ Add WhatsApp Number'}
+                                                    </button>
+                                                )}
                                             </div>
 
                                             {u.displayName && (
@@ -400,7 +425,7 @@ export default function AdminDashboard() {
                                                 </button>
                                             )}
 
-                                            {u.role !== 'admin' && (
+                                            {canEdit && (
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <button
                                                         onClick={() => toggleUserStatus(u.id, 'isBanned', !!u.isBanned)}
@@ -424,7 +449,8 @@ export default function AdminDashboard() {
                                             )}
                                         </div>
                                     </details>
-                                ))}
+                                );
+                                })}
                                 {filteredUsers.length === 0 && (
                                     <p className="p-6 text-center text-gaming-muted text-sm">No users found.</p>
                                 )}

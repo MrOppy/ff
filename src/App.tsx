@@ -25,6 +25,7 @@ import Privacy from './pages/Privacy';
 import Refund from './pages/Refund';
 import MiddlemanRules from './pages/MiddlemanRules';
 import TrustedAdmins from './pages/TrustedAdmins';
+import OnboardingModal from './components/OnboardingModal';
 
 function App() {
   return (
@@ -58,6 +59,8 @@ function App() {
                 <Route path="/wishlist" element={<Wishlist />} />
               </Routes>
             </main>
+
+            <OnboardingModal />
 
             <BottomNav />
             <BeamDivider />

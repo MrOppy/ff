@@ -146,6 +146,12 @@ export default function Shop() {
 
             const timeA = (a.createdAt as { toMillis?: () => number })?.toMillis?.() || 0;
             const timeB = (b.createdAt as { toMillis?: () => number })?.toMillis?.() || 0;
+            
+            const bumpA = (a.lastBumpedAt as { toMillis?: () => number })?.toMillis?.() || (a.lastBumpedAt as any)?.seconds * 1000 || 0;
+            const bumpB = (b.lastBumpedAt as { toMillis?: () => number })?.toMillis?.() || (b.lastBumpedAt as any)?.seconds * 1000 || 0;
+            
+            const effectiveTimeA = Math.max(timeA, bumpA);
+            const effectiveTimeB = Math.max(timeB, bumpB);
 
             // Featured sort (Featured items first, oldest featured first)
             if (sortOrder === 'Featured') {
@@ -160,13 +166,13 @@ export default function Shop() {
                     return timeA - timeB;
                 }
 
-                // If both are NOT featured, sort newest first
-                return timeB - timeA;
+                // If both are NOT featured, sort newest first (bumped counts as newer)
+                return effectiveTimeB - effectiveTimeA;
             }
 
             // Otherwise, sort according to selected option
             if (sortOrder === 'Newest') {
-                return timeB - timeA;
+                return effectiveTimeB - effectiveTimeA;
             }
             if (sortOrder === 'Price: Low to High') {
                 const priceA = parseInt((a.price || '0').replace(/[^0-9]/g, ''));

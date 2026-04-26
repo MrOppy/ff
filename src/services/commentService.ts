@@ -10,19 +10,20 @@ export interface CommentData {
     text: string;
     createdAt: unknown;
     isSellerReply: boolean;
-    isAdminReply?: boolean;
+    authorRole?: string;
     replies?: {
         userId: string;
         userName: string;
         userPhoto: string | null;
         text: string;
         createdAt: string;
-        isAdminReply?: boolean;
+        isSellerReply?: boolean;
+        authorRole?: string;
     }[];
 }
 
 export const commentService = {
-    async addComment(listingId: string, userId: string, userName: string, userPhoto: string | null, text: string, isSeller: boolean, isAdmin: boolean = false) {
+    async addComment(listingId: string, userId: string, userName: string, userPhoto: string | null, text: string, isSeller: boolean, authorRole?: string) {
         try {
             const docRef = await addDoc(collection(db, 'comments'), {
                 listingId,
@@ -31,7 +32,7 @@ export const commentService = {
                 userPhoto,
                 text,
                 isSellerReply: isSeller,
-                isAdminReply: isAdmin,
+                authorRole: authorRole || null,
                 createdAt: serverTimestamp()
             });
             return docRef.id;
@@ -56,7 +57,7 @@ export const commentService = {
             return docs.sort((a, b) => {
                 const timeA = (a.createdAt as any)?.toMillis ? (a.createdAt as any).toMillis() : 0;
                 const timeB = (b.createdAt as any)?.toMillis ? (b.createdAt as any).toMillis() : 0;
-                return timeA - timeB;
+                return timeB - timeA; // Latest first
             });
         } catch (error) {
             console.error("Error fetching comments: ", error);
@@ -64,12 +65,24 @@ export const commentService = {
         }
     },
 
-    async replyToComment(commentId: string, replyData: { userId: string, userName: string, userPhoto: string | null, text: string, isAdminReply?: boolean }) {
+    async replyToComment(commentId: string, replyData: { userId: string, userName: string, userPhoto: string | null, text: string, isSellerReply?: boolean, authorRole?: string }) {
         try {
             const commentRef = doc(db, 'comments', commentId);
+            // Sanitize undefined/null fields for Firestore
+            const rawData = {
+                userId: replyData.userId,
+                userName: replyData.userName,
+                userPhoto: replyData.userPhoto,
+                text: replyData.text,
+                isSellerReply: replyData.isSellerReply,
+                authorRole: replyData.authorRole
+            };
+            const sanitizedData = Object.fromEntries(
+                Object.entries(rawData).filter(([_, v]) => v != null) // Filters both null and undefined
+            );
             await updateDoc(commentRef, {
                 replies: arrayUnion({
-                    ...replyData,
+                    ...sanitizedData,
                     createdAt: new Date().toISOString()
                 })
             });
