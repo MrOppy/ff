@@ -199,7 +199,7 @@ export default function Profile() {
                     <div className="p-5 md:p-8 flex flex-col md:flex-row items-center gap-3 md:gap-6 relative z-10">
                         <div className="relative w-20 h-20 md:w-28 md:h-28 rounded-full bg-gaming-800 border-2 md:border-4 border-gaming-800 overflow-hidden shadow-xl shrink-0">
                             {user.photoURL ? (
-                                <img src={user.photoURL} alt={profile.displayName} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img src={user.photoURL} alt={profile.displayName || ''} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                             ) : (
                                 <User className="w-10 h-10 md:w-12 md:h-12 text-gaming-muted absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                             )}

@@ -91,8 +91,8 @@ export default function AccountDetails() {
                     setAccount((MOCK_ACCOUNTS.find(a => a.id === id) || MOCK_ACCOUNTS[0]) as AccountData);
                 }
 
-                const currentAccount = data || MOCK_ACCOUNTS.find(a => a.id === id) || MOCK_ACCOUNTS[0];
-                const reviewKey = (currentAccount as AccountData)?.seller;
+                const currentAccount = (data || MOCK_ACCOUNTS.find(a => a.id === id) || MOCK_ACCOUNTS[0]) as AccountData;
+                const reviewKey = currentAccount?.seller;
                 if (reviewKey) {
                     const reviews = await reviewService.getReviewsForSeller(reviewKey);
                     if (reviews.length > 0) {
