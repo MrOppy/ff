@@ -52,3 +52,43 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+.beam-divider {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  overflow: hidden;
+  background: linear-gradient(90deg, transparent, rgba(55, 65, 81, 0.5), transparent);
+}
+
+.beam-divider__beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0) 0%,
+    rgba(16, 185, 129, 0.35) 40%,
+    rgba(52, 211, 153, 0.9) 50%,
+    rgba(16, 185, 129, 0.35) 60%,
+    rgba(16, 185, 129, 0) 100%
+  );
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.55));
+  animation: beam-travel 7s linear infinite;
+  will-change: transform;
+}
+
+.beam-divider__beam--b {
+  animation-delay: -3.5s;
+}
+
+@keyframes beam-travel {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}

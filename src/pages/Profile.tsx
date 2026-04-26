@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { ShieldCheck, User, Settings, Package, AlertTriangle, ShieldAlert, Heart } from 'lucide-react';
+import { ShieldCheck, User, Settings, Package, TriangleAlert as AlertTriangle, ShieldAlert, Heart } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingService } from '../services/listingService';
@@ -110,7 +110,7 @@ export default function Profile() {
 
     if (!user || !profile) {
         return (
-            <div className="flex-1 min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
+            <div className="flex-1 flex flex-col items-center justify-center px-4 pt-28 pb-12">
                 <div className="bg-gaming-800/50 backdrop-blur-xl border border-white/10 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl">
                     <div className="w-20 h-20 bg-gaming-900/80 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 shadow-inner">
                         <User className="w-10 h-10 text-gaming-accent" />

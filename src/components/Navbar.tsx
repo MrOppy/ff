@@ -41,6 +41,7 @@ export default function Navbar() {
                         <Link to="/" className={`transition-colors font-bold ${pathname === '/' ? 'text-gaming-accent' : 'text-gray-300 hover:text-white'}`}>{t['nav_home']}</Link>
                         <Link to="/shop" className={`transition-colors font-bold ${pathname.startsWith('/shop') ? 'text-gaming-accent' : 'text-gray-300 hover:text-white'}`}>{t['nav_shop']}</Link>
                         <Link to="/reviews" className={`transition-colors font-bold ${pathname.startsWith('/reviews') ? 'text-gaming-accent' : 'text-gray-300 hover:text-white'}`}>{t['nav_reviews']}</Link>
+                        <Link to="/trusted-admins" className={`transition-colors font-bold ${pathname.startsWith('/trusted-admins') ? 'text-gaming-accent' : 'text-gray-300 hover:text-white'}`}>{t['nav_middleman']}</Link>
                         <Link to="/about" className={`transition-colors font-bold ${pathname.startsWith('/about') ? 'text-gaming-accent' : 'text-gray-300 hover:text-white'}`}>{t['nav_about']}</Link>
                     </div>
 

@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, ShieldCheck, Search, Users, Zap, HeadphonesIcon } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Search, Users, Zap, Headphones as HeadphonesIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import type { AccountData } from '../components/AccountCard';
 import { listingService } from '../services/listingService';
 import AccountCard from '../components/AccountCard';
+import BeamDivider from '../components/BeamDivider';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Home() {
@@ -38,7 +39,7 @@ export default function Home() {
     return (
         <div className="w-full relative">
             {/* Hero Section */}
-            <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-32">
+            <section className="relative min-h-[90vh] md:min-h-screen flex items-center justify-center overflow-hidden pt-24 md:pt-32 pb-16 md:pb-24">
                 {/* Background Elements */}
                 <div className="absolute inset-0 bg-gaming-900 z-0">
                     <div className="absolute inset-0 bg-[url('/images/hero-bg.jpg')] bg-cover bg-center opacity-30" />
@@ -76,7 +77,7 @@ export default function Home() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.1 }}
-                            className="text-5xl md:text-7xl font-heading font-extrabold text-white leading-tight mb-6 tracking-tight"
+                            className="text-4xl sm:text-5xl md:text-7xl font-heading font-extrabold text-white leading-tight mb-6 tracking-tight"
                         >
                             FREE FIRE <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-gaming-accent via-emerald-400 to-teal-300 animate-shimmer" style={{ backgroundSize: '200% auto' }}>
@@ -97,13 +98,24 @@ export default function Home() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.3 }}
-                            className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
+                            className="flex flex-col gap-4 w-full sm:w-auto"
                         >
-                            <Link to="/shop" className="btn-primary text-lg">
-                                {t['btn_explore']} <ArrowRight className="w-5 h-5 ml-1" />
-                            </Link>
-                            <Link to="/add-listing" className="btn-secondary text-lg">
-                                {t['btn_sell_hero']}
+                            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                <Link to="/shop" className="btn-primary text-lg">
+                                    {t['btn_explore']} <ArrowRight className="w-5 h-5 ml-1" />
+                                </Link>
+                                <Link to="/add-listing" className="btn-secondary text-lg">
+                                    {t['btn_sell_hero']}
+                                </Link>
+                            </div>
+                            <Link
+                                to="/trusted-admins"
+                                className="group relative inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-gaming-accent/15 via-gaming-accent/10 to-gaming-accent/15 border border-gaming-accent/40 text-white font-bold text-base transition-all hover:border-gaming-accent hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] overflow-hidden"
+                            >
+                                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-gaming-accent/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                                <ShieldCheck className="w-5 h-5 text-gaming-accent relative" />
+                                <span className="relative">{t['btn_hire_middleman']}</span>
+                                <ArrowRight className="w-4 h-4 text-gaming-accent relative group-hover:translate-x-1 transition-transform" />
                             </Link>
                         </motion.div>
 
@@ -181,8 +193,10 @@ export default function Home() {
                 </div>
             </section>
 
+            <BeamDivider />
+
             {/* Featured Accounts Section */}
-            <section className="py-24 bg-gaming-900 border-t border-gaming-800 relative z-10">
+            <section className="py-16 md:py-24 bg-gaming-900 relative z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-end mb-12">
                         <div>
@@ -213,8 +227,10 @@ export default function Home() {
                 </div>
             </section>
 
+            <BeamDivider />
+
             {/* Why Choose Us Section */}
-            <section className="py-24 bg-gaming-900 border-t border-gaming-800 relative z-10">
+            <section className="py-16 md:py-24 bg-gaming-900 relative z-10">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gaming-accent/10 via-gaming-900 to-gaming-900 pointer-events-none" />
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">

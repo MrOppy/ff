@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, User, PlusCircle, ShieldAlert, MessageCircle } from 'lucide-react';
+import { House, ShoppingBag, User, CirclePlus as PlusCircle, ShieldAlert, MessageCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -9,7 +9,7 @@ export default function BottomNav() {
     const { t } = useLanguage();
 
     const navItems = [
-        { path: '/', icon: Home, label: t['nav_home'] || 'Home' },
+        { path: '/', icon: House, label: t['nav_home'] || 'Home' },
         { path: '/shop', icon: ShoppingBag, label: t['nav_shop'] || 'Shop' },
     ];
 
@@ -31,6 +31,22 @@ export default function BottomNav() {
                     const Icon = item.icon;
                     // Exact match for Home, startsWith for others (like /shop, /profile)
                     const isActive = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path);
+                    const isSell = item.path === '/add-listing';
+
+                    if (isSell) {
+                        return (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className="group flex flex-col items-center justify-end w-full h-full transition-all duration-300"
+                            >
+                                <div className={`-mt-8 mb-1 w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white ring-4 ring-gaming-900 transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105 group-active:scale-95'}`}>
+                                    <Icon className="w-7 h-7 stroke-[2.5px]" />
+                                </div>
+                                <span className={`text-[10px] tracking-wide transition-all ${isActive ? 'font-bold text-gaming-accent' : 'font-semibold text-gaming-accent/90 group-hover:text-gaming-accent'}`}>{item.label}</span>
+                            </Link>
+                        );
+                    }
 
                     return (
                         <Link

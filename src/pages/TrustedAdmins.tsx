@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminService, type TrustedAdmin } from '../services/adminService';
-import { ShieldCheck, MessageCircle, Facebook, Info } from 'lucide-react';
+import { ShieldCheck, Facebook, Info } from 'lucide-react';
+import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function TrustedAdmins() {
@@ -74,7 +75,7 @@ export default function TrustedAdmins() {
                                             rel="noreferrer"
                                             className="flex flex-col items-center justify-center p-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl transition-colors group/wa"
                                         >
-                                            <MessageCircle className="w-5 h-5 text-emerald-400 mb-1 group-hover/wa:scale-110 transition-transform" />
+                                            <WhatsAppIcon className="w-5 h-5 text-emerald-400 mb-1 group-hover/wa:scale-110 transition-transform" />
                                             <span className="text-xs text-emerald-400 font-bold uppercase">{t['trusted_btn_wa']}</span>
                                         </a>
                                         <a

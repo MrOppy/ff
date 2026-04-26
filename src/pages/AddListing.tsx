@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle, ShieldCheck, Plus } from 'lucide-react'; // Removed Upload, kept Plus, AlertTriangle, ShieldCheck
+import { X, TriangleAlert as AlertTriangle, ShieldCheck, Plus } from 'lucide-react'; // Removed Upload, kept Plus, AlertTriangle, ShieldCheck
 import { useAuth } from '../context/AuthContext';
 import { listingService } from '../services/listingService';
 import type { NewListingData } from '../services/listingService';
@@ -44,7 +44,7 @@ export default function AddListing() {
     // Access control
     if (!user) {
         return (
-            <div className="pt-32 pb-20 min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
                 <ShieldCheck className="w-16 h-16 text-emerald-500 mb-4" />
                 <h1 className="text-4xl font-heading font-bold text-white mb-4">Sign In Required</h1>
                 <p className="text-gaming-muted mb-8 max-w-md">You must be signed in and verified to list an account.</p>
@@ -55,7 +55,7 @@ export default function AddListing() {
 
     if (!isSeller) {
         return (
-            <div className="pt-32 pb-20 min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
                 <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
                 <h1 className="text-4xl font-heading font-bold text-white mb-4">Not a Verified Seller</h1>
                 <p className="text-gaming-muted mb-8 max-w-lg">

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import Footer from './components/Footer';
+import BeamDivider from './components/BeamDivider';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -59,6 +60,7 @@ function App() {
             </main>
 
             <BottomNav />
+            <BeamDivider />
             <Footer />
           </div>
         </Router>

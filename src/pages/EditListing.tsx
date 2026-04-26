@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Plus, X, TriangleAlert as AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { listingService } from '../services/listingService';
 import type { NewListingData } from '../services/listingService';
@@ -100,7 +100,7 @@ export default function EditListing() {
     // Access control
     if (!user) {
         return (
-            <div className="pt-32 pb-20 min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
                 <ShieldCheck className="w-16 h-16 text-emerald-500 mb-4" />
                 <h1 className="text-4xl font-heading font-bold text-white mb-4">Sign In Required</h1>
                 <p className="text-gaming-muted mb-8 max-w-md">You must be signed in to edit a listing.</p>
@@ -111,7 +111,7 @@ export default function EditListing() {
 
     if (!isSeller && !isAdmin) {
         return (
-            <div className="pt-32 pb-20 min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
                 <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
                 <h1 className="text-4xl font-heading font-bold text-white mb-4">Access Denied</h1>
                 <p className="text-gaming-muted mb-8 max-w-lg">
@@ -131,7 +131,7 @@ export default function EditListing() {
     if (error && !title) {
         // If there's an error and we haven't loaded data, show a full screen error
         return (
-            <div className="pt-32 pb-20 min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
                 <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
                 <h1 className="text-4xl font-heading font-bold text-white mb-4">Error</h1>
                 <p className="text-gaming-muted mb-8 max-w-lg">{error}</p>
