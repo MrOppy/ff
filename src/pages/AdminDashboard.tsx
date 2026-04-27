@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Users, ShoppingBag, TrendingUp, ShieldAlert, Search, UserCheck, Trash2, Plus, Megaphone, Send, X, Check } from 'lucide-react';
+import { ShieldCheck, Users, ShoppingBag, TrendingUp, ShieldAlert, Search, UserCheck, Trash2, Plus, Megaphone, Send, X } from 'lucide-react';
 import { collection, query, getDocs, updateDoc, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db, ADMIN_EMAIL } from '../lib/firebase';
 import { LISTINGS_COLLECTION } from '../services/listingService';
@@ -70,7 +70,6 @@ export default function AdminDashboard() {
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
             
             // Send Notification
-            const targetUser = users.find(u => u.id === userId);
             const adminName = user?.displayName || 'Admin';
             await notificationService.addNotification({
                 userId,
