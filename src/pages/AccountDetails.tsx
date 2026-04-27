@@ -133,13 +133,17 @@ export default function AccountDetails() {
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.trim() || !user || !id) return;
+        if (profile?.isBanned || profile?.isScammer) {
+            alert("Your account is restricted from commenting.");
+            return;
+        }
         setCommenting(true);
         try {
             const isSeller = account?.seller === user.displayName;
             const authorRole = profile?.role;
             const newCommentId = await commentService.addComment(
                 id, user.uid, user.displayName || 'Anonymous User',
-                user.photoURL, newComment, isSeller, authorRole
+                user.photoURL, newComment, isSeller, authorRole, account?.sellerId
             );
             const newCommentData: CommentData = {
                 id: newCommentId, listingId: id, userId: user.uid,
@@ -160,6 +164,10 @@ export default function AccountDetails() {
     const handleReplySubmit = async (e: React.FormEvent, commentId: string) => {
         e.preventDefault();
         if (!user || !account || !replyText.trim()) return;
+        if (profile?.isBanned || profile?.isScammer) {
+            alert("Your account is restricted from commenting.");
+            return;
+        }
         setReplying(true);
         try {
             const isSeller = account?.seller === user.displayName;

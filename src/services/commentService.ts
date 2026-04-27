@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc, arrayUnion, deleteDoc, arrayRemove, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { notificationService } from './notificationService';
 
 export interface CommentData {
     id: string;
@@ -23,7 +24,7 @@ export interface CommentData {
 }
 
 export const commentService = {
-    async addComment(listingId: string, userId: string, userName: string, userPhoto: string | null, text: string, isSeller: boolean, authorRole?: string) {
+    async addComment(listingId: string, userId: string, userName: string, userPhoto: string | null, text: string, isSeller: boolean, authorRole?: string, sellerId?: string) {
         try {
             const docRef = await addDoc(collection(db, 'comments'), {
                 listingId,
@@ -35,6 +36,19 @@ export const commentService = {
                 authorRole: authorRole || null,
                 createdAt: serverTimestamp()
             });
+
+            // Create notification for seller if the commenter is not the seller
+            if (!isSeller && sellerId && sellerId !== userId) {
+                await notificationService.addNotification({
+                    userId: sellerId,
+                    type: 'comment',
+                    listingId,
+                    triggerUserId: userId,
+                    triggerUserName: userName,
+                    triggerUserPhoto: userPhoto
+                });
+            }
+
             return docRef.id;
         } catch (error) {
             console.error("Error adding comment: ", error);

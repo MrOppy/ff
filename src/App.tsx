@@ -16,6 +16,7 @@ import Profile from './pages/Profile';
 import SellerReviews from './pages/SellerReviews';
 import PublicReviews from './pages/PublicReviews';
 import { LanguageProvider } from './context/LanguageContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Wishlist from './pages/Wishlist';
 
 import About from './pages/About';
@@ -31,7 +32,8 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <Router>
+        <NotificationProvider>
+          <Router>
           <ScrollToTop />
           <div className="min-h-screen flex flex-col font-sans">
             <Navbar />
@@ -67,6 +69,7 @@ function App() {
             <Footer />
           </div>
         </Router>
+        </NotificationProvider>
       </AuthProvider>
     </LanguageProvider>
   );

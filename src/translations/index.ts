@@ -270,7 +270,9 @@ export const translations = {
         "ob_err_user": "Username is required.",
         "ob_err_user_char": "Username can only contain letters, numbers, and underscores.",
         "ob_err_user_taken": "Username is already taken. Please choose another.",
-        "ob_err_save": "Failed to save profile."
+        "ob_err_save": "Failed to save profile.",
+        "seller_banned": "This user has been permanently banned",
+        "seller_scammer": "Warning: This user is a Scammer"
     },
     bn: {
         // Hero Section
@@ -543,6 +545,8 @@ export const translations = {
         "ob_err_user": "ইউজারনেম দেওয়া আবশ্যক।",
         "ob_err_user_char": "ইউজারনেমে শুধুমাত্র অক্ষর, সংখ্যা এবং আন্ডারস্কোর থাকতে পারে।",
         "ob_err_user_taken": "ইউজারনেমটি আগে থেকেই ব্যবহৃত। অনুগ্রহ করে অন্যটি বেছে নিন।",
-        "ob_err_save": "প্রোফাইল সেভ করতে ব্যর্থ হয়েছে।"
+        "ob_err_save": "প্রোফাইল সেভ করতে ব্যর্থ হয়েছে।",
+        "seller_banned": "এই ব্যবহারকারীকে স্থায়ীভাবে নিষিদ্ধ করা হয়েছে",
+        "seller_scammer": "সতর্কতা: এই ব্যবহারকারী একজন প্রতারক"
     }
 };

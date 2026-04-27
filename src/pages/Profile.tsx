@@ -101,9 +101,7 @@ export default function Profile() {
                 finalWhatsapp = `${editCountryCode}${localNum}`;
             }
 
-            const newRole = finalWhatsapp
-                ? (profile.role === 'user' ? 'seller' : profile.role)
-                : (profile.role === 'seller' ? 'user' : profile.role);
+            const newRole = (!finalWhatsapp && profile.role === 'seller') ? 'user' : profile.role;
 
             await updateProfile({
                 displayName: editName,
@@ -211,7 +209,7 @@ export default function Profile() {
                                 <span className="px-3 py-1 bg-gaming-800 border border-gaming-700 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-300">
                                     Role: <span className="text-gaming-accent">{profile.role.replace('_', ' ')}</span>
                                 </span>
-                                {isSeller && (
+                                {['trusted_seller', 'admin', 'higher_admin', 'main_admin'].includes(profile.role) && (
                                     <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                                         <ShieldCheck className="w-3.5 h-3.5" /> Verified Seller
                                     </span>
@@ -316,19 +314,27 @@ export default function Profile() {
                                         </div>
                                     </div>
 
-                                    {!isSeller && (
+                                    {!isSeller && !profile.isBanned && !profile.isScammer && (
                                         <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-3xl p-8 relative overflow-hidden">
                                             <AlertTriangle className="absolute -right-8 -bottom-8 w-48 h-48 text-amber-500/5" />
                                             <h3 className="text-2xl font-bold text-amber-500 mb-3 flex items-center gap-3">
-                                                <ShieldCheck className="w-8 h-8" /> Become a Seller
+                                                <ShieldCheck className="w-8 h-8" /> {t['prof_req_title'] || 'Seller Verification Required'}
                                             </h3>
                                             <p className="text-amber-100/70 mb-8 max-w-xl leading-relaxed relative z-10 text-sm">
-                                                You currently have a standard user account. To create listings and sell accounts on this platform, you must add your WhatsApp number to your profile. This helps verify your identity and provides a secure contact method for buyers.
+                                                {profile.whatsappNumber 
+                                                    ? (t['prof_req_desc'] || 'You currently have a standard user account. To create listings and sell accounts on this platform, you must be manually verified by the administrator.')
+                                                    : 'You currently have a standard user account. To create listings and sell accounts on this platform, you must add your WhatsApp number to your profile. This helps verify your identity and provides a secure contact method for buyers.'}
                                             </p>
-                                            <div className="flex justify-center lg:justify-start">
-                                                <button onClick={() => setActiveTab('settings')} className="btn-primary bg-amber-600 hover:bg-amber-500 shadow-none relative z-10 px-6 py-2.5 md:px-8 md:py-3 text-sm rounded-lg md:rounded-xl">
-                                                    Set Up Profile
-                                                </button>
+                                            <div className="flex justify-center lg:justify-start relative z-10">
+                                                {profile.whatsappNumber ? (
+                                                    <button onClick={() => window.open('/trusted-admins', '_self')} className="btn-primary bg-emerald-600 hover:bg-emerald-500 shadow-none px-6 py-2.5 md:px-8 md:py-3 text-sm rounded-lg md:rounded-xl flex items-center gap-2">
+                                                        <ShieldCheck className="w-4 h-4" /> Contact Admin
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => setActiveTab('settings')} className="btn-primary bg-amber-600 hover:bg-amber-500 shadow-none px-6 py-2.5 md:px-8 md:py-3 text-sm rounded-lg md:rounded-xl">
+                                                        Set Up Profile
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     )}

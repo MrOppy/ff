@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { User, LogOut, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
     const { user, isAdmin, signInWithGoogle, logout } = useAuth();
@@ -50,6 +51,7 @@ export default function Navbar() {
                         <button onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')} className="px-3 py-1.5 bg-gaming-800/80 border border-gaming-700/50 rounded-lg text-sm text-gaming-accent font-bold hover:bg-gaming-700 transition-colors shadow-sm ml-2 flex items-center gap-1.5">
                             <Globe className="w-4 h-4" /> {language === 'en' ? 'বাংলা' : 'ENG'}
                         </button>
+                        {user && <NotificationDropdown />}
 
                         {user ? (
                             <div className="flex items-center gap-4">
@@ -90,6 +92,7 @@ export default function Navbar() {
                         <button onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')} className="px-3 py-1 bg-gaming-800/80 border border-gaming-700/50 rounded-lg text-sm text-gaming-accent font-bold hover:bg-gaming-700 transition-colors shadow-sm flex items-center gap-1.5">
                             <Globe className="w-4 h-4" /> {language === 'en' ? 'বাংলা' : 'ENG'}
                         </button>
+                        {user && <NotificationDropdown />}
                     </div>
                 </div>
             </div>

@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is ANY tier of admin
+    function isAdmin() {
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isSignedIn() && (role == 'admin' || role == 'higher_admin' || role == 'main_admin');
+    }
+
+    // Helper function to check if user is restricted (banned or scammer)
+    function isRestricted() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userData.isBanned == true || userData.isScammer == true;
+    }
+
+    // Rules for the listings collection
+    match /listings/{listingId} {
+      allow read: if true;
+      
+      // Allow creation if user is signed in, NOT restricted, ensures they don't spoof sellerId or make themselves featured
+      allow create: if isSignedIn() && 
+                    !isRestricted() &&
+                    request.resource.data.sellerId == request.auth.uid &&
+                    request.resource.data.get('isFeatured', false) == false; 
+      
+      // Allow update/delete ONLY if the user is the owner OR an admin AND NOT restricted (if owner)
+      // Owners cannot give away ownership (sellerId) or mark their own listings as featured
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          !isRestricted() &&
+          resource.data.sellerId == request.auth.uid &&
+          request.resource.data.sellerId == request.auth.uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isFeatured'])
+        )
+      );
+      allow delete: if isSignedIn() && ((!isRestricted() && resource.data.sellerId == request.auth.uid) || isAdmin());
+    }
+
+    // Rules for the users collection
+    match /users/{userId} {
+      allow read: if true; // Public profiles
+      
+      // Allow creation, but prevent granting 'admin' role unless it's the master admin email
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+         request.auth.token.email == "johncenahzoppy@gmail.com" || request.resource.data.get('role', 'user') != 'admin'
+      );
+      
+      // Users can modify their own profile, admins can modify any
+      // Prevent privilege escalation by blocking changes to role, isBanned, and isScammer by normal users
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (
+           request.auth.uid == userId 
+           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isBanned', 'isScammer'])
+        )
+      );
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // Rules for comments
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && !isRestricted() && request.resource.data.userId == request.auth.uid;
+      
+      // Allow update if:
+      // 1. User is an admin
+      // 2. User is the original author modifying their own comment
+      // 3. User is simply adding a reply (only modifying the 'replies' field)
+      allow update: if isSignedIn() && !isRestricted() && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replies'])
+      );
+      
+      allow delete: if isSignedIn() && ((!isRestricted() && resource.data.userId == request.auth.uid) || isAdmin());
+    }
+
+    // Rules for admin reviews
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAdmin() && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Rules for trusted admins
+    match /trustedAdmins/{adminId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Rules for public reviews (platform reviews)
+    match /publicReviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && !isRestricted(); // 24-hour limit applied client-side, but requires auth here.
+      allow update: if false; // Reviews cannot be edited
+      allow delete: if isAdmin();
+    }
+
+    // Rules for notifications
+    match /notifications/{notificationId} {
+      // Users can only read, update, or delete their own notifications
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Anyone signed in can trigger a notification, but the triggerUserId must be their own, or admin
+      // Since system notifications don't have a specific triggerUserId tied to auth all the time, or admin can send, we should be careful.
+      // We allow admin, OR if the triggerUserId is the sender.
+      allow create: if isSignedIn() && (request.resource.data.triggerUserId == request.auth.uid || isAdmin() || request.resource.data.get('triggerUserId', '') == 'admin');
+    }
+  }
+}

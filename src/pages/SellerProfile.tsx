@@ -125,7 +125,10 @@ export default function SellerProfile() {
         if (sellerRole === 'trusted_seller') {
             return { icon: BadgeCheck, label: 'Trusted Seller', cls: 'bg-blue-500/10 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.25)]' };
         }
-        return { icon: CheckCircle2, label: 'Seller', cls: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' };
+        if (sellerRole === 'seller') {
+            return { icon: CheckCircle2, label: 'Seller', cls: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' };
+        }
+        return { icon: Store, label: 'Member', cls: 'bg-gray-500/10 border-gray-500/40 text-gray-400' };
     })();
     const RoleIcon = roleBadge.icon;
 
@@ -133,17 +136,7 @@ export default function SellerProfile() {
         <div className="pt-20 sm:pt-24 pb-16 min-h-screen bg-gaming-900">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
 
-                {/* Warning Banners */}
-                {userData?.isBanned && (
-                    <div className="bg-red-500/10 border border-red-500/60 text-red-400 p-3 rounded-lg mb-3 flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-center text-xs sm:text-sm">
-                        <ShieldAlert className="w-4 h-4 shrink-0" /> This user has been permanently banned
-                    </div>
-                )}
-                {userData?.isScammer && (
-                    <div className="bg-amber-500/10 border border-amber-500/60 text-amber-400 p-3 rounded-lg mb-3 flex items-center justify-center gap-2 font-bold uppercase tracking-wider text-center text-xs sm:text-sm">
-                        <ShieldAlert className="w-4 h-4 shrink-0" /> Warning: This user has been flagged as a scammer
-                    </div>
-                )}
+
 
                 {/* Seller Header */}
                 <motion.div
@@ -184,12 +177,36 @@ export default function SellerProfile() {
                                     <h1 className="text-xl sm:text-3xl font-heading font-extrabold text-white tracking-tight truncate">
                                         {userData?.displayName || sellerName}
                                     </h1>
-                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider self-center ${roleBadge.cls}`}>
-                                        <RoleIcon className="w-3 h-3" /> {roleBadge.label}
+                                    <div className="flex flex-wrap gap-1.5 items-center justify-center lg:justify-start">
+                                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider self-center ${roleBadge.cls}`}>
+                                            <RoleIcon className="w-3 h-3" /> {roleBadge.label}
+                                        </div>
+                                        {userData?.isScammer && (
+                                            <div className="inline-flex items-center gap-1 px-2 py-0.5 border rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider self-center bg-amber-500/10 border-amber-500/40 text-amber-400">
+                                                Scammer
+                                            </div>
+                                        )}
+                                        {userData?.isBanned && (
+                                            <div className="inline-flex items-center gap-1 px-2 py-0.5 border rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider self-center bg-red-500/10 border-red-500/40 text-red-500">
+                                                Banned
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 {userData?.username && (
                                     <p className="text-gaming-muted text-xs sm:text-sm mb-2 sm:mb-3 font-mono">@{userData.username}</p>
+                                )}
+                                
+                                {/* Compact Warnings */}
+                                {userData?.isBanned && (
+                                    <div className="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 text-red-400 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wide mb-3">
+                                        <ShieldAlert className="w-3.5 h-3.5" /> {t['seller_banned'] || 'This user has been permanently banned'}
+                                    </div>
+                                )}
+                                {userData?.isScammer && !userData?.isBanned && (
+                                    <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wide mb-3">
+                                        <ShieldAlert className="w-3.5 h-3.5" /> {t['seller_scammer'] || 'Warning: This user is a Scammer'}
+                                    </div>
                                 )}
                                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                                     <AdminReviewsSection sellerId={sellerName} />
@@ -212,7 +229,7 @@ export default function SellerProfile() {
                                         className="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-gaming-700 text-gaming-muted font-bold text-xs sm:text-sm cursor-not-allowed border border-gaming-600"
                                     >
                                         <WhatsAppIcon className="w-4 h-4 opacity-50" />
-                                        Seller didn't add number
+                                        User didn't add number
                                     </button>
                                 )}
                             </div>

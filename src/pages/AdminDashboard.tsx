@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Users, ShoppingBag, TrendingUp, ShieldAlert, Search, UserCheck, Trash2, Plus } from 'lucide-react';
+import { ShieldCheck, Users, ShoppingBag, TrendingUp, ShieldAlert, Search, UserCheck, Trash2, Plus, Megaphone, Send, X, Check } from 'lucide-react';
 import { collection, query, getDocs, updateDoc, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db, ADMIN_EMAIL } from '../lib/firebase';
 import { LISTINGS_COLLECTION } from '../services/listingService';
 import { adminService, type TrustedAdmin } from '../services/adminService';
 import type { AccountData } from '../components/AccountCard';
+import { notificationService } from '../services/notificationService';
 
 export default function AdminDashboard() {
     const { isAdmin, user, profile } = useAuth();
@@ -17,10 +18,19 @@ export default function AdminDashboard() {
     const [listings, setListings] = useState<AccountData[]>([]);
     const [trustedAdmins, setTrustedAdmins] = useState<TrustedAdmin[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'admins'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'listings' | 'admins' | 'announcements'>('users');
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [listingSearchTerm, setListingSearchTerm] = useState('');
     const [listingSort, setListingSort] = useState<'newest' | 'price_high' | 'price_low'>('newest');
+
+    // Announcement State
+    const [announcementMsg, setAnnouncementMsg] = useState('');
+    const [announcementLink, setAnnouncementLink] = useState('');
+    const [announcementTargetMode, setAnnouncementTargetMode] = useState<'all' | 'specific'>('all');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [announcementSelectedUsers, setAnnouncementSelectedUsers] = useState<any[]>([]);
+    const [announcementUserSearch, setAnnouncementUserSearch] = useState('');
+    const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
     useEffect(() => {
         if (!isAdmin) {
@@ -58,6 +68,17 @@ export default function AdminDashboard() {
         try {
             await updateDoc(doc(db, 'users', userId), { role: newRole });
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+            
+            // Send Notification
+            const targetUser = users.find(u => u.id === userId);
+            const adminName = user?.displayName || 'Admin';
+            await notificationService.addNotification({
+                userId,
+                type: 'role_update',
+                triggerUserId: user?.uid || 'admin',
+                triggerUserName: adminName,
+                message: `changed your role to ${newRole.replace('_', ' ').toUpperCase()}.`
+            });
         } catch (err) {
             console.error(err);
             alert('Failed to update role');
@@ -69,6 +90,26 @@ export default function AdminDashboard() {
             const newValue = !currentValue;
             await updateDoc(doc(db, 'users', userId), { [field]: newValue });
             setUsers(users.map(u => u.id === userId ? { ...u, [field]: newValue } : u));
+
+            // Send Notification
+            const adminName = user?.displayName || 'Admin';
+            let msg = '';
+            let notifType: 'banned' | 'scammer_flag' | 'role_update' = 'role_update';
+            if (field === 'isBanned') {
+                msg = newValue ? 'has permanently banned your account.' : 'has lifted the ban on your account.';
+                notifType = 'banned';
+            } else if (field === 'isScammer') {
+                msg = newValue ? 'has flagged your account as a SCAMMER.' : 'has removed the scammer flag from your account.';
+                notifType = 'scammer_flag';
+            }
+            
+            await notificationService.addNotification({
+                userId,
+                type: notifType,
+                triggerUserId: user?.uid || 'admin',
+                triggerUserName: adminName,
+                message: msg
+            });
         } catch (err) {
             console.error(err);
             alert(`Failed to update ${field}`);
@@ -127,6 +168,54 @@ export default function AdminDashboard() {
         } catch (err) {
             console.error(err);
             alert('Failed to delete listing');
+        }
+    };
+
+    const handleSendAnnouncement = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!announcementMsg.trim()) return;
+        if (announcementTargetMode === 'specific' && announcementSelectedUsers.length === 0) {
+            alert('Please select at least one user.');
+            return;
+        }
+
+        setSendingAnnouncement(true);
+        try {
+            const adminName = user?.displayName || 'Admin';
+            let targets: any[] = [];
+            
+            if (announcementTargetMode === 'all') {
+                targets = users;
+            } else {
+                targets = announcementSelectedUsers;
+            }
+
+            // Send notification to all targets
+            for (const target of targets) {
+                const notifData: any = {
+                    userId: target.id,
+                    type: 'custom',
+                    triggerUserId: user?.uid || 'admin',
+                    triggerUserName: adminName,
+                    message: announcementMsg,
+                };
+                if (announcementLink.trim()) {
+                    notifData.link = announcementLink.trim();
+                }
+
+                await notificationService.addNotification(notifData);
+            }
+
+            setAnnouncementMsg('');
+            setAnnouncementLink('');
+            setAnnouncementSelectedUsers([]);
+            setAnnouncementUserSearch('');
+            alert(`Announcement sent to ${targets.length} user(s)!`);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to send announcement.");
+        } finally {
+            setSendingAnnouncement(false);
         }
     };
 
@@ -231,6 +320,12 @@ export default function AdminDashboard() {
                         className={`py-3 px-6 font-bold flex items-center gap-2 border-b-2 transition-all ${activeTab === 'admins' ? 'border-gaming-accent text-gaming-accent bg-gaming-800/50' : 'border-transparent text-gray-400 hover:text-white'}`}
                     >
                         <UserCheck className="w-5 h-5" /> Manage Admins
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('announcements')}
+                        className={`py-3 px-6 font-bold flex items-center gap-2 border-b-2 transition-all ${activeTab === 'announcements' ? 'border-gaming-accent text-gaming-accent bg-gaming-800/50' : 'border-transparent text-gray-400 hover:text-white'}`}
+                    >
+                        <Megaphone className="w-5 h-5" /> Announcements
                     </button>
                 </div>
 
@@ -694,6 +789,158 @@ export default function AdminDashboard() {
                                     <p className="text-gaming-muted col-span-full text-center py-4">No admins added yet.</p>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* ANNOUNCEMENTS TAB */}
+                    {activeTab === 'announcements' && (
+                        <div className="p-6 md:p-8 border border-gaming-700 bg-gaming-800/50 rounded-xl max-w-3xl mx-auto my-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                                    <Megaphone className="w-6 h-6 text-blue-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Send Announcement</h2>
+                                    <p className="text-sm text-gaming-muted">Send a custom notification to users. Appears in their notification bell.</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSendAnnouncement} className="space-y-6">
+                                {/* Target Audience Selection */}
+                                <div className="space-y-4">
+                                    <label className="block text-sm font-medium text-gray-300">Target Audience <span className="text-red-500">*</span></label>
+                                    
+                                    <div className="flex bg-gaming-900 border border-gaming-700 rounded-lg overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAnnouncementTargetMode('all')}
+                                            className={`flex-1 py-3 text-sm font-bold transition-colors ${announcementTargetMode === 'all' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gaming-800'}`}
+                                        >
+                                            All Users ({users.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAnnouncementTargetMode('specific')}
+                                            className={`flex-1 py-3 text-sm font-bold transition-colors ${announcementTargetMode === 'specific' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gaming-800'}`}
+                                        >
+                                            Specific Users
+                                        </button>
+                                    </div>
+
+                                    {/* Specific Users Multi-Select */}
+                                    {announcementTargetMode === 'specific' && (
+                                        <div className="bg-gaming-900 border border-gaming-700 rounded-lg p-4 space-y-4">
+                                            
+                                            {/* Search Input */}
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gaming-muted" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search users to add..."
+                                                    value={announcementUserSearch}
+                                                    onChange={(e) => setAnnouncementUserSearch(e.target.value)}
+                                                    className="w-full bg-gaming-800 border border-gaming-700 text-white pl-10 pr-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500"
+                                                />
+                                            </div>
+
+                                            {/* Selected Users Pills */}
+                                            {announcementSelectedUsers.length > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {announcementSelectedUsers.map(su => (
+                                                        <div key={su.id} className="flex items-center gap-2 bg-blue-500/20 border border-blue-500/40 text-blue-300 px-3 py-1.5 rounded-full text-sm">
+                                                            <span>{su.displayName || su.username || su.email || 'Unknown'}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setAnnouncementSelectedUsers(announcementSelectedUsers.filter(u => u.id !== su.id))}
+                                                                className="hover:text-white"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Search Results Dropdown-like Area */}
+                                            {announcementUserSearch.trim() && (
+                                                <div className="max-h-48 overflow-y-auto border border-gaming-700 rounded-lg bg-gaming-800/50 custom-scrollbar divide-y divide-gaming-700">
+                                                    {users.filter(u => 
+                                                        !announcementSelectedUsers.find(su => su.id === u.id) &&
+                                                        ((u.displayName || '').toLowerCase().includes(announcementUserSearch.toLowerCase()) ||
+                                                         (u.username || '').toLowerCase().includes(announcementUserSearch.toLowerCase()) ||
+                                                         (u.email || '').toLowerCase().includes(announcementUserSearch.toLowerCase()))
+                                                    ).slice(0, 10).map(u => (
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setAnnouncementSelectedUsers([...announcementSelectedUsers, u]);
+                                                                setAnnouncementUserSearch('');
+                                                            }}
+                                                            className="w-full text-left px-4 py-3 hover:bg-gaming-700/50 text-sm text-gray-300 flex items-center justify-between"
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-white">{u.displayName || u.username || 'Unknown'}</span>
+                                                                <span className="text-xs text-gaming-muted">{u.email}</span>
+                                                            </div>
+                                                            <Plus className="w-4 h-4 text-gaming-muted" />
+                                                        </button>
+                                                    ))}
+                                                    {users.filter(u => 
+                                                        !announcementSelectedUsers.find(su => su.id === u.id) &&
+                                                        ((u.displayName || '').toLowerCase().includes(announcementUserSearch.toLowerCase()) ||
+                                                         (u.username || '').toLowerCase().includes(announcementUserSearch.toLowerCase()) ||
+                                                         (u.email || '').toLowerCase().includes(announcementUserSearch.toLowerCase()))
+                                                    ).length === 0 && (
+                                                        <div className="px-4 py-6 text-center text-gaming-muted text-sm">
+                                                            No users found matching "{announcementUserSearch}"
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Message <span className="text-red-500">*</span></label>
+                                    <textarea
+                                        required
+                                        rows={3}
+                                        value={announcementMsg}
+                                        onChange={(e) => setAnnouncementMsg(e.target.value)}
+                                        placeholder="e.g. Flash sale! All listings are 10% off this weekend!"
+                                        className="w-full bg-gaming-900 border border-gaming-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
+                                    />
+                                    <p className="text-xs text-gaming-muted mt-2">This will appear alongside your admin name in their notification dropdown.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Target Link (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={announcementLink}
+                                        onChange={(e) => setAnnouncementLink(e.target.value)}
+                                        placeholder="e.g. /shop or https://yourlink.com"
+                                        className="w-full bg-gaming-900 border border-gaming-700 text-white p-3 rounded-lg focus:outline-none focus:border-blue-500"
+                                    />
+                                    <p className="text-xs text-gaming-muted mt-2">If provided, clicking the notification will route the user to this link.</p>
+                                </div>
+
+                                <div className="pt-4 border-t border-gaming-700">
+                                    <button
+                                        type="submit"
+                                        disabled={sendingAnnouncement || !announcementMsg.trim()}
+                                        className={`w-full py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${sendingAnnouncement || !announcementMsg.trim() ? 'bg-gaming-700 text-gaming-muted cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'}`}
+                                    >
+                                        {sendingAnnouncement ? 'Sending...' : (
+                                            <>
+                                                <Send className="w-5 h-5" /> Send Announcement
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     )}
 

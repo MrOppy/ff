@@ -61,9 +61,22 @@ export default function AddListing() {
                 <p className="text-gaming-muted mb-8 max-w-lg">
                     Your account is not verified for selling. Please contact the Admin on WhatsApp to upgrade your account to a Seller role.
                 </p>
-                <button className="btn-primary" onClick={() => window.open('https://wa.me/8801764696964', '_blank')}>
+                <button className="btn-primary" onClick={() => window.open('/trusted-admins', '_self')}>
                     Contact Admin
                 </button>
+            </div>
+        );
+    }
+
+    if (profile?.isBanned || profile?.isScammer) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-28 pb-12">
+                <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
+                <h1 className="text-4xl font-heading font-bold text-white mb-4">Access Denied</h1>
+                <p className="text-red-400 mb-8 max-w-lg font-bold">
+                    Your account has been restricted from creating listings due to violations of our terms of service.
+                </p>
+                <button onClick={() => navigate('/')} className="btn-secondary">Go Home</button>
             </div>
         );
     }

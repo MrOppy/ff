@@ -73,12 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     if (userSnap.exists()) {
                         const data = userSnap.data() as UserProfile & { isBanned?: boolean, isScammer?: boolean };
 
-                        // Boot the user if they were banned
-                        if (data.isBanned) {
-                            await signOut(auth);
-                            setProfile(null);
-                            return;
-                        }
+                        // We no longer boot the user if they are banned, so they can login 
+                        // but will be blocked from specific actions via UI/Firestore.
 
                         let updatedData = { ...data };
 
